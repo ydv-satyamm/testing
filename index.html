@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hindi Foundation Batch - Full Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 20px;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .controls {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #218838;
+        }
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .item:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .item input[type="checkbox"] {
+            margin-right: 15px;
+            transform: scale(1.3);
+            cursor: pointer;
+        }
+        .item label {
+            cursor: pointer;
+            word-break: break-all;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>HINDI FOUNDATION BATCH</h2>
+    <p class="subtitle">Total Classes: 73</p>
+
+    <div class="controls">
+        <label style="cursor: pointer; font-size: 16px;">
+            <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"> <strong>Select All</strong>
+        </label>
+        <button class="btn" onclick="downloadSelected()">Download Selected Links</button>
+    </div>
+
+    <ul class="item-list" id="linkList">
+        <!-- Links dynamic load honge -->
+    </ul>
+</div>
+
+<script>
+    const linksData = [
+        { name: "UPSSSC YOUTH BOOK CHAPTERWISE SOLVED Part 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10393/UPSSSCYOUTHBOOKCHAPTERWISESOLVEDPart1AnandxBotss.mp4?hash=AgAD7B" },
+        { name: "UPSSSC YOUTH BOOK CHAPTERWISE SOLVED Part 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10392/UPSSSCYOUTHBOOKCHAPTERWISESOLVEDPart2AnandxBotss.mp4?hash=AgAD7h" },
+        { name: "Vartani shuddhi 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10391/Vartanishuddhi1AnandxBotss.mp4?hash=AgAD7x" },
+        { name: "Vartani Shuddhi 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10395/VartaniShuddhi2AnandxBotss.mp4?hash=AgAD8B" },
+        { name: "Vartani Shuddhi 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10394/VartaniShuddhi3AnandxBotss.mp4?hash=AgAD8h" },
+        { name: "Vartani shuddhi 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10405/Vartanishuddhi4AnandxBotss.mp4?hash=AgAD8x" },
+        { name: "Vartani Shuddhi 5 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10401/VartaniShuddhi5AnandxBotss.mp4?hash=AgAD9B" },
+        { name: "शब्द परिभाषा व प्रकार 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10403/%E0%A4%B6%E0%A4%AF%E0%A4%AB%E0%A4%A6_%E0%A4%AA%E0%A4%B0%E0%A4%AF%E0%A4%B7_%E0%A4%B5_%E0%A4%AA%E0%A4%B0%E0%A4%95%E0%A4%B0_1_AnandxBotss.mp4?hash=AgAD9R" },
+        { name: "शब्द परिभाषा व प्रकार 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10402/%E0%A4%B6%E0%A4%AF%E0%A4%AB%E0%A4%A6_%E0%A4%AA%E0%A4%B0%E0%A4%AF%E0%A4%B7_%E0%A4%B5_%E0%A4%AA%E0%A4%B0%E0%A4%95%E0%A4%B0_2_AnandxBotss.mp4?hash=AgAD9h" },
+        { name: "शब्द परिभाषा प्रकार 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10404/%E0%A4%B6%E0%A4%AF%E0%A4%AB%E0%A4%A6_%E0%A4%AA%E0%A4%B0%E0%A4%AF%E0%A4%B7_%E0%A4%AA%E0%A4%B0%E0%A4%95%E0%A4%B0_3_AnandxBotss.mp4?hash=AgAD9x" },
+        { name: "शब्द परिभाषा प्रकार 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10415/%E0%A4%B6%E0%A4%AF%E0%A4%AB%E0%A4%A6_%E0%A4%AA%E0%A4%B0%E0%A4%AF%E0%A4%B7_%E0%A4%AA%E0%A4%B0%E0%A4%95%E0%A4%B0_4_AnandxBotss.mp4?hash=AgAD-B" },
+        { name: "शब्द सम्पदा प्रश्नोत्तर ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10413/%E0%A4%B6%E0%A4%AF%E0%A4%AB%E0%A4%A6_%E0%A4%B8%E0%A4%AE%E0%A4%AA%E0%A4%A6_%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8%E0%A4%A4%E0%A4%BB_AnandxBotss.mp4?hash=AgAD-R" },
+        { name: "समास 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10414/%E0%A4%B8%E0%A4%AE%E0%A4%B81AnandxBotss.mp4?hash=AgAD-h" },
+        { name: "Samas 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10412/Samas2AnandxBotss.mp4?hash=AgAD_h" },
+        { name: "समास 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10411/%E0%A4%B8%E0%A4%AE%E0%A4%B83AnandxBotss.mp4?hash=AgAD_x" },
+        { name: "Samas 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10422/Samas4AnandxBotss.mp4?hash=AgAEHg" },
+        { name: "समास प्रश्न अभ्यास ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10424/%E0%A4%B8%E0%A4%AE%E0%A4%B8_%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8_%E0%A4%85%E0%A4%AD%E0%A4%AF%E0%A4%B8_AnandxBotss.mp4?hash=AgADAR" },
+        { name: "Vilom 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10425/Vilom4AnandxBotss.mp4?hash=AgADAx" },
+        { name: "Vaky Shuddhi 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10423/VakyShuddhi1AnandxBotss.mp4?hash=AgADBB" },
+        { name: "Vaky Shuddhi 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10421/VakyShuddhi2AnandxBotss.mp4?hash=AgADBR" },
+        { name: "Vaky shuddhi 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10434/Vakyshuddhi3AnandxBotss.mp4?hash=AgADBh" },
+        { name: "Vaky Shuddhi 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10431/VakyShuddhi4AnandxBotss.mp4?hash=AgADBx" },
+        { name: "Vaky shuddhi 5 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10432/Vakyshuddhi5AnandxBotss.mp4?hash=AgADCB" },
+        { name: "वाक्य शुद्धि विशेष 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10435/%E0%A4%B5%E0%A4%95%E0%A4%AF_%E0%A4%B6%E0%A4%A6%E0%A4%A7_%E0%A4%B5%E0%A4%B6%E0%A4%B7_1_AnandxBotss.mp4?hash=AgADCR" },
+        { name: "वाक्य शुद्धि विशेष 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10433/%E0%A4%B5%E0%A4%95%E0%A4%AF_%E0%A4%B6%E0%A4%A6%E0%A4%A7_%E0%A4%B5%E0%A4%B6%E0%A4%B7_2_AnandxBotss.mp4?hash=AgADVC" },
+        { name: "Vaky shuddhi prashn Abhyaas 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10443/VakyshuddhiprashnAbhyaas1AnandxBotss.mp4?hash=AgAD_y" },
+        { name: "Vaky shuddhi prashn Abhyaas 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10442/VakyshuddhiprashnAbhyaas2AnandxBotss.mp4?hash=AgADAS" },
+        { name: "वाक्य शुद्धि महत्त्वपूर्ण तथ्य ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10445/%E0%A4%B5%E0%A4%95%E0%A4%AF_%E0%A4%B6%E0%A4%A6%E0%A4%A7_%E0%A4%AE%E0%A4%B9%E0%A4%A4%E0%A4%B5%E0%A4%AA%E0%A4%B0%E0%A4%A3_%E0%A4%A4%E0%A4%B5%E0%A4%AF_AnandxBotss.mp4?hash=AgADAi" },
+        { name: "मुहावरे एवं लोकोक्तियाँ परिचय ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10444/%E0%A4%AE%E0%A4%B9%E0%A4%B5%E0%A4%B0_%E0%A4%8F%E0%A4%B5_%E0%A4%B2%E0%A4%95%E0%A4%95%E0%A4%A4%E0%A4%AF_%E0%A4%AA%E0%A4%B0%E0%A4%9A%E0%A4%AF_AnandxBotss.mp4?hash=AgADAy" },
+        { name: "मुहावरे एवं लोकोक्तियाँ प्रश्न ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10441/%E0%A4%AE%E0%A4%B9%E0%A4%B5%E0%A4%B0_%E0%A4%8F%E0%A4%B5_%E0%A4%B2%E0%A4%95%E0%A4%95%E0%A4%A4%E0%A4%AF_%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8_AnandxBotss.mp4?hash=AgADBC" },
+        { name: "hindi comprehension ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10452/Hindi_Comprehension_%E0%A4%AC%E0%A4%A7%E0%A4%97%E0%A4%AE%E0%A4%AF%E0%A4%A4_%E0%A4%85%E0%A4%A7%E0%A4%AF%E0%A4%AF_11_hindi_comprehension_AnandxBotss.mp4?hash=AgADCC" },
+        { name: "भाषा एवं लिपि का विकास ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10453/%E0%A4%AD%E0%A4%B7_%E0%A4%8F%E0%A4%B5_%E0%A4%B2%E0%A4%AA_%E0%A4%95_%E0%A4%B5%E0%A4%95%E0%A4%B8_AnandxBotss.mp4?hash=AgADCy" },
+        { name: "हिंदी की बोलियाँ ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10455/%E0%A4%B9%E0%A4%A6%E0%A4%95%E0%A4%AC%E0%A4%B2%E0%A4%AFAnandxBotss.mp4?hash=AgADDC" },
+        { name: "वाक्य रचना ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10451/%E0%A4%B5%E0%A4%95%E0%A4%AF%E0%A4%B0%E0%A4%9A%E0%A4%A8AnandxBotss.mp4?hash=AgADDS" },
+        { name: "উপसर्ग एवं प्रत्यय उपसर्ग 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10454/%E0%A4%89%E0%A4%AA%E0%A4%B8%E0%A4%B0%E0%A4%971AnandxBotss.mp4?hash=AgADDy" },
+        { name: "উপसर्ग एवं प्रत्यय उपसर्ग 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10461/%E0%A4%89%E0%A4%AA%E0%A4%B8%E0%A4%B0%E0%A4%972AnandxBotss.mp4?hash=AgADEC" },
+        { name: "উপसर्ग एवं प्रत्यय pratyay 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10465/pratyay1AnandxBotss.mp4?hash=AgADES" },
+        { name: "উপसर्ग एवं प्रत्यय pratyay 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10463/pratyay2AnandxBotss.mp4?hash=AgADEi" },
+        { name: "Viram chihn ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10464/ViramchihnAnandxBotss.mp4?hash=AgADEy" },
+        { name: "anekarthi 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10462/anekarthi1AnandxBotss.mp4?hash=AgADFC" },
+        { name: "anekarthi 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10471/anekarthi2AnandxBotss.mp4?hash=AgADFi" },
+        { name: "anekarthi 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10472/anekarthi3AnandxBotss.mp4?hash=AgADGC" },
+        { name: "व्याकरण परिचय ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10473/%E0%A4%B5%E0%A4%AF%E0%A4%95%E0%A4%B0%E0%A4%A3%E0%A4%AA%E0%A4%B0%E0%A4%A3AnandxBotss.mp4?hash=AgADGS" },
+        { name: "sangya 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10474/sangya1AnandxBotss.mp4?hash=AgADGi" },
+        { name: "sangya 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10475/sangya2AnandxBotss.mp4?hash=AgADHi" },
+        { name: "sangya 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10484/sangya3AnandxBotss.mp4?hash=AgADIC" },
+        { name: "संज्ञा प्रश्न ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10481/%E0%A4%B8%E0%A4%9C%E0%A4%9E%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8AnandxBotss.mp4?hash=AgADIS" },
+        { name: "sarvnam 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10482/sarvnam2AnandxBotss.mp4?hash=AgADIi" },
+        { name: "sarvnaam 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10483/sarvnaam1AnandxBotss.mp4?hash=AgADIy" },
+        { name: "sarvnaam prashn ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10485/sarvnaamprashnAnandxBotss.mp4?hash=AgADJC" },
+        { name: "सर्वनाम प्रश्न, लिंग एवं वचन ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10495/%E0%A4%B8%E0%A4%B0%E0%A4%B5%E0%A4%A8%E0%A4%AE_%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8_%E0%A4%B2%E0%A4%97_%E0%A4%8F%E0%A4%B5_%E0%A4%B5%E0%A4%9A%E0%A4%A8_AnandxBotss.mp4?hash=AgADJy" },
+        { name: "वचन एवं लिंग फाइनल ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10493/%E0%A4%B5%E0%A4%9A%E0%A4%A8_%E0%A4%8F%E0%A4%B5_%E0%A4%B2%E0%A4%97_%E0%A4%AB%E0%A4%87%E0%A4%A8%E0%A4%B2_AnandxBotss.mp4?hash=AgADKC" },
+        { name: "कारक एवं प्रश्न ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10494/%E0%A4%95%E0%A4%B0%E0%A4%95%E0%A4%8F%E0%A4%B5%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8AnandxBotss.mp4?hash=AgADKS" },
+        { name: "क्रिया ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10496/%E0%A4%95%E0%A4%B0%E0%A4%AFAnandxBotss.mp4?hash=AgADKi" },
+        { name: "काल सम्पूर्ण ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10497/%E0%A4%95%E0%A4%B2%E0%A4%B8%E0%A4%AE%E0%A4%AA%E0%A4%B0%E0%A4%A3AnandxBotss.mp4?hash=AgADKy" },
+        { name: "क्रिया एवं काल प्रश्न अभ्यास ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10509/%E0%A4%95%E0%A4%B0%E0%A4%AF_%E0%A4%8F%E0%A4%B5_%E0%A4%95%E0%A4%B2_%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8_%E0%A4%85%E0%A4%AD%E0%A4%AF%E0%A4%B8_AnandxBotss.mp4?hash=AgADLC" },
+        { name: "Kriya Visheshan ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10507/KriyaVisheshanAnandxBotss.mp4?hash=AgADLS" },
+        { name: "Vachy Sampoorn ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10505/VachySampoornAnandxBotss.mp4?hash=AgADLy" },
+        { name: "avyay nipat final ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10508/avyaynipatfinalAnandxBotss.mp4?hash=AgADMi" },
+        { name: "Ras 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10506/httpsAnandxBotss.mp4?hash=AgADMy" },
+        { name: "Ras 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10516/Ras2AnandxBotss.mp4?hash=AgADNC" },
+        { name: "ras 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10515/ras3AnandxBotss.mp4?hash=AgADNS" },
+        { name: "chhand 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10519/chhand1AnandxBotss.mp4?hash=AgADNi" },
+        { name: "Chhand 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10518/Chhand2AnandxBotss.mp4?hash=AgADNy" },
+        { name: "chhand 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10517/chhand3AnandxBotss.mp4?hash=AgADOC" },
+        { name: "chhand 4 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10525/chhand4AnandxBotss.mp4?hash=AgADOi" },
+        { name: "alankar 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10529/alankar1AnandxBotss.mp4?hash=AgADPC" },
+        { name: "alankar 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10527/alankar2AnandxBotss.mp4?hash=AgADPS" },
+        { name: "alankar 3 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10526/alankar3AnandxBotss.mp4?hash=AgADPi" },
+        { name: "पत्रलेखन 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10528/%E0%A4%AA%E0%A4%A4%E0%A4%B0%E0%A4%B2%E0%A4%96%E0%A4%A81AnandxBotss.mp4?hash=AgADPy" },
+        { name: "पत्रलेखन 2 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10536/%E0%A4%AA%E0%A4%A4%E0%A4%B0%E0%A4%B2%E0%A4%96%E0%A4%A82AnandxBotss.mp4?hash=AgADQC" },
+        { name: "पत्रलेखन प्रश्न ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10537/%E0%A4%AA%E0%A4%A4%E0%A4%B0%E0%A4%B2%E0%A4%96%E0%A4%A8%E0%A4%AA%E0%A4%B0%E0%A4%B6%E0%A4%A8AnandxBotss.mp4?hash=AgADQi" },
+        { name: "हिंदी साहित्य का इतिहास 1 ज्ञानवाणी.mp4", url: "https://cfile2linkk-07afb7e61c31.herokuapp.com/10535/%E0%A4%B9%E0%A4%A6_%E0%A4%B8%E0%A4%B9%E0%A4%A4%E0%A4%AF_%E0%A4%95_%E0%A4%87%E0%A4%A4%E0%A4%B9%E0%A4%B8_1_AnandxBotss.mp4?hash=AgADSS" }
+    ];
+
+    const listContainer = document.getElementById('linkList');
+
+    // Dynamically generating all 73 items
+    linksData.forEach((item, index) => {
+        const classNumber = index + 1;
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML = `
+            <input type="checkbox" class="link-checkbox" id="chk-${classNumber}" value="${item.url}" data-filename="Class ${classNumber}.mp4">
+            <label for="chk-${classNumber}">
+                <strong>Class ${classNumber}:</strong> ${item.name}
+            </label>
+        `;
+        listContainer.appendChild(li);
+    });
+
+    // Select All / Deselect All Logic
+    function toggleSelectAll(master) {
+        const checkboxes = document.querySelectorAll('.link-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+    }
+
+    // Download Logic with Delay (to bypass browser popup block)
+    function downloadSelected() {
+        const selected = document.querySelectorAll('.link-checkbox:checked');
+        
+        if (selected.length === 0) {
+            alert('Kripya download karne ke liye kam se kam ek class select karein!');
+            return;
+        }
+
+        selected.forEach((cb, i) => {
+            setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = cb.value;
+                a.download = cb.getAttribute('data-filename'); // Class 1.mp4, Class 2.mp4 format
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }, i * 1200); // 1.2 sec gap for smooth multiple downloads
+        });
+    }
+</script>
+
+</body>
+</html>
