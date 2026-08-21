@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyTracker Pro - Name & Email Single Bound Login</title>
+  <title>StudyTracker Pro - Seamless Auto Sync</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -23,7 +23,7 @@
           <i data-lucide="user-check" class="w-6 h-6"></i>
         </div>
         <h3 class="text-lg font-bold text-white">StudyTracker Login</h3>
-        <p class="text-xs text-slate-400">Apna Name aur Email daal kar data access karein</p>
+        <p class="text-xs text-slate-400">Apna Name aur Email daal kar progress sync karein</p>
       </div>
 
       <form id="simpleLoginForm" class="space-y-3">
@@ -39,7 +39,7 @@
         <p id="authErrorMsg" class="hidden text-xs text-rose-400 font-medium"></p>
 
         <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i data-lucide="log-in" class="w-4 h-4"></i> Login / Enter Tracker
+          <i data-lucide="log-in" class="w-4 h-4"></i> Login & Sync Progress
         </button>
       </form>
 
@@ -450,9 +450,6 @@
   </main>
 
   <script>
-    // ==========================================
-    // 1. SUPABASE CLIENT
-    // ==========================================
     const SUPABASE_PROJECT_URL = "https://yffohnbxwurnaajanvuc.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZm9obmJ4d3VybmFhamFudnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMjQ0MjIsImV4cCI6MjEwMjkwMDQyMn0.RcOjYyuf2Ip_giYl6ppcMi-SS76WwS4lnQSWyVJ8fv0";
     
@@ -501,7 +498,6 @@
     }
     let activeSession = storedActive;
 
-    // Logged in user profile { name, email }
     let currentProfile = null;
     try {
       currentProfile = JSON.parse(localStorage.getItem('study_user_profile'));
@@ -584,7 +580,7 @@
     });
 
     // ==========================================
-    // 2. MODAL CONTROLS & DROPDOWN MANAGEMENT
+    // 2. MODAL & DROPDOWN MANAGEMENT
     // ==========================================
     function renderSubjectDropdown(selectedSubject = '') {
       const select = document.getElementById('subjectSelect');
@@ -648,7 +644,7 @@
     }
 
     // ==========================================
-    // 3. STRICT 1-EMAIL = 1-NAME LOGIN & SYNC
+    // 3. SEAMLESS TWO-WAY SYNC (NAME + EMAIL)
     // ==========================================
     function updateUserUI() {
       const tag = document.getElementById('userNameTag');
@@ -688,7 +684,6 @@
       if (!emailInput || !nameInput) return;
 
       if (!supabaseClient) {
-        // Local offline binding
         currentProfile = { name: nameInput, email: emailInput };
         localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
         closeAuthModal();
@@ -697,26 +692,23 @@
       }
 
       try {
-        // 1. Check if email already exists in profiles
+        // 1. Check existing profile
         const { data: existingUser, error: fetchErr } = await supabaseClient
           .from('profiles')
           .select('*')
           .eq('email', emailInput)
-          .single();
+          .maybeSingle();
 
-        if (fetchErr && fetchErr.code !== 'PGRST116') { // PGRST116 means no rows found
-          throw fetchErr;
-        }
+        if (fetchErr) throw fetchErr;
 
         if (existingUser) {
-          // Check if entered name matches registered name
           if (existingUser.name.trim().toLowerCase() !== nameInput.toLowerCase()) {
-            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya apna wahi naam enter karein.`;
+            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya sahi naam enter karein.`;
             errorMsg.classList.remove('hidden');
             return;
           }
         } else {
-          // New Registration: permanently lock email to this name
+          // Register new user
           const { error: insertErr } = await supabaseClient
             .from('profiles')
             .insert([{ email: emailInput, name: nameInput }]);
@@ -724,12 +716,13 @@
           if (insertErr) throw insertErr;
         }
 
-        // Login success
         currentProfile = { name: nameInput, email: emailInput };
         localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
         closeAuthModal();
         updateUserUI();
-        await fetchCloudData();
+
+        // 2. Perform Full Two-Way Sync
+        await syncDataWithCloud();
 
       } catch (err) {
         errorMsg.innerText = "Error: " + err.message;
@@ -737,18 +730,47 @@
       }
     });
 
-    async function fetchCloudData() {
+    // Two-Way Sync Engine: Merges cloud data and pushes local progress
+    async function syncDataWithCloud() {
       if (!supabaseClient || !currentProfile) return;
+
       try {
-        // Fetch User's Logs
+        // A. Fetch existing Cloud Logs
         const { data: cloudLogs, error: logErr } = await supabaseClient
+          .from('study_logs')
+          .select('*')
+          .eq('user_email', currentProfile.email);
+
+        if (logErr) throw logErr;
+
+        // B. Upload any local logs that are missing on Cloud
+        const cloudIds = new Set((cloudLogs || []).map(l => l.id));
+        const localLogsToUpload = logs.filter(l => !cloudIds.has(l.id));
+
+        if (localLogsToUpload.length > 0) {
+          const payload = localLogsToUpload.map(l => ({
+            id: l.id,
+            user_email: currentProfile.email,
+            subject: l.subject,
+            topic: l.topic,
+            duration: l.duration,
+            start_time: l.startTime,
+            end_time: l.endTime,
+            end_timestamp: l.endTimestamp || new Date().getTime(),
+            date: l.date
+          }));
+          await supabaseClient.from('study_logs').insert(payload);
+        }
+
+        // C. Refresh combined latest logs
+        const { data: refreshedLogs } = await supabaseClient
           .from('study_logs')
           .select('*')
           .eq('user_email', currentProfile.email)
           .order('created_at', { ascending: false });
 
-        if (!logErr && cloudLogs) {
-          logs = cloudLogs.map(l => ({
+        if (refreshedLogs) {
+          logs = refreshedLogs.map(l => ({
             id: l.id,
             subject: l.subject,
             topic: l.topic,
@@ -762,21 +784,34 @@
           localStorage.setItem('study_logs_data', JSON.stringify(logs));
         }
 
-        // Fetch User's Custom Subjects
-        const { data: cloudSubs, error: subErr } = await supabaseClient
+        // D. Sync Custom Subjects
+        const { data: cloudSubs } = await supabaseClient
           .from('study_subjects')
           .select('name')
           .eq('user_email', currentProfile.email);
 
-        if (!subErr && cloudSubs && cloudSubs.length > 0) {
-          subjects = cloudSubs.map(s => s.name);
+        const cloudSubNames = new Set((cloudSubs || []).map(s => s.name));
+        const localSubsToUpload = subjects.filter(s => !initialDefaultSubjects.includes(s) && !cloudSubNames.has(s));
+
+        if (localSubsToUpload.length > 0) {
+          const subPayload = localSubsToUpload.map(name => ({
+            user_email: currentProfile.email,
+            name: name
+          }));
+          await supabaseClient.from('study_subjects').insert(subPayload);
+        }
+
+        if (cloudSubs && cloudSubs.length > 0) {
+          cloudSubs.forEach(s => {
+            if (!subjects.includes(s.name)) subjects.push(s.name);
+          });
           localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
         }
 
         renderSubjectDropdown();
         renderAll();
-      } catch (e) {
-        console.error("Cloud fetch error:", e);
+      } catch (err) {
+        console.error("Sync error:", err);
       }
     }
 
@@ -1485,7 +1520,7 @@
     renderAll();
     checkActiveSessionTimer();
     updateUserUI();
-    if (currentProfile) fetchCloudData();
+    if (currentProfile) syncDataWithCloud();
   </script>
 </body>
 </html>
