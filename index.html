@@ -1,1631 +1,881 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyTracker Pro - Single Active Device Session</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Music Playlist</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    background:#080808;
+    color:white;
+    min-height:100vh;
+}
+
+.header{
+    padding:20px;
+    text-align:center;
+    background:linear-gradient(135deg,#111,#242424);
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.header h1{
+    font-size:26px;
+}
+
+.header p{
+    color:#aaa;
+    margin-top:5px;
+}
+
+.searchBox{
+    padding:15px;
+    display:flex;
+    gap:8px;
+    max-width:800px;
+    margin:auto;
+}
+
+.searchBox input{
+    flex:1;
+    padding:13px;
+    border:none;
+    border-radius:10px;
+    outline:none;
+    font-size:15px;
+}
+
+button{
+    border:none;
+    cursor:pointer;
+}
+
+.loadBtn{
+    padding:13px 18px;
+    border-radius:10px;
+    background:#00c853;
+    color:white;
+    font-weight:bold;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:10px 15px 170px;
+}
+
+.status{
+    text-align:center;
+    color:#aaa;
+    padding:15px;
+}
+
+.song{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px;
+    margin:7px 0;
+    background:#151515;
+    border-radius:12px;
+    transition:.2s;
+}
+
+.song:hover{
+    background:#222;
+}
+
+.song.active{
+    background:#123d29;
+}
+
+.song img{
+    width:58px;
+    height:58px;
+    object-fit:cover;
+    border-radius:8px;
+}
+
+.songInfo{
+    flex:1;
+    min-width:0;
+}
+
+.songTitle{
+    font-weight:bold;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.artist{
+    color:#999;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.playBtn{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:#00c853;
+    color:white;
+    font-size:18px;
+}
+
+.player{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:rgba(15,15,15,.97);
+    border-top:1px solid #333;
+    padding:12px;
+    z-index:20;
+}
+
+.playerTop{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    max-width:900px;
+    margin:auto;
+}
+
+.playerTop img{
+    width:55px;
+    height:55px;
+    border-radius:8px;
+    object-fit:cover;
+}
+
+.nowInfo{
+    flex:1;
+    min-width:0;
+}
+
+.nowTitle{
+    font-weight:bold;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.nowArtist{
+    color:#999;
+    font-size:13px;
+}
+
+.controls{
+    display:flex;
+    gap:8px;
+}
+
+.control{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#292929;
+    color:white;
+    font-size:17px;
+}
+
+.mainPlay{
+    background:#00c853;
+}
+
+.progress{
+    max-width:900px;
+    margin:10px auto 0;
+}
+
+.progress input{
+    width:100%;
+}
+
+.time{
+    display:flex;
+    justify-content:space-between;
+    color:#999;
+    font-size:11px;
+}
+
+.volume{
+    width:100px;
+}
+
+@media(max-width:600px){
+    .header h1{
+        font-size:21px;
+    }
+
+    .searchBox{
+        flex-direction:column;
+    }
+
+    .loadBtn{
+        width:100%;
+    }
+
+    .volume{
+        display:none;
+    }
+
+    .playerTop img{
+        width:48px;
+        height:48px;
+    }
+}
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-16">
 
-  <!-- Status Toast Bar -->
-  <div id="syncToast" class="hidden fixed bottom-4 right-4 z-[150] bg-slate-800 border border-slate-700 text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transition-all">
-    <span id="syncToastDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-    <span id="syncToastMsg" class="font-medium text-slate-200">Syncing...</span>
-  </div>
+<body>
 
-  <!-- Force Logout Alert Modal -->
-  <div id="forceLogoutModal" class="hidden fixed inset-0 z-[140] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
-      <div class="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/40">
-        <i data-lucide="smartphone" class="w-7 h-7"></i>
-      </div>
-      <h3 class="text-lg font-bold text-white">Logged Out From This Device</h3>
-      <p class="text-xs text-slate-300">Aapka account kisi doosre device me login ho gaya hai. Security ke liye is device se logout kiya gaya hai.</p>
-      <button onclick="acknowledgeForceLogout()" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition">
-        Theek Hai (OK)
-      </button>
-    </div>
-  </div>
+<div class="header">
+    <h1>🎵 My Music</h1>
+    <p>JioSaavn Playlist Player</p>
+</div>
 
-  <!-- Simple Name + Email Login Modal -->
-  <div id="authModal" class="hidden fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-      <div class="text-center space-y-1">
-        <div class="w-12 h-12 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center mx-auto mb-2">
-          <i data-lucide="user-check" class="w-6 h-6"></i>
-        </div>
-        <h3 class="text-lg font-bold text-white">StudyTracker Login</h3>
-        <p class="text-xs text-slate-400">Apna Name aur Email daal kar session start karein</p>
-      </div>
+<div class="searchBox">
+    <input
+        id="playlistUrl"
+        type="text"
+        placeholder="Paste JioSaavn playlist URL..."
+    >
+    <button class="loadBtn" onclick="loadPlaylist()">
+        Load Playlist
+    </button>
+</div>
 
-      <form id="simpleLoginForm" class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Aapka Naam (Full Name)</label>
-          <input type="text" id="loginNameInput" required placeholder="e.g. Satyam Yadav" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Email ID</label>
-          <input type="email" id="loginEmailInput" required placeholder="name@example.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
-        </div>
+<div class="container">
 
-        <p id="authErrorMsg" class="hidden text-xs text-rose-400 font-medium"></p>
-
-        <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i data-lucide="log-in" class="w-4 h-4"></i> Login Here
-        </button>
-      </form>
-
-      <button type="button" onclick="closeAuthModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-400 rounded-xl">
-        Cancel / Close
-      </button>
-    </div>
-  </div>
-
-  <!-- Add Subject Modal -->
-  <div id="addSubjectModal" class="hidden fixed inset-0 z-[130] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i data-lucide="book-plus" class="w-5 h-5 text-indigo-400"></i> Naya Subject Add Karein
-        </h3>
-        <button onclick="closeAddSubjectModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <form id="addSubjectForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Subject Ka Naam</label>
-          <input type="text" id="newSubjectNameInput" required placeholder="e.g. Economics, Polity, Physics"
-            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-        </div>
-        <div class="flex gap-2">
-          <button type="button" onclick="closeAddSubjectModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-xl transition">
-            Cancel
-          </button>
-          <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition">
-            Save Subject
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Target Achieved Prompt Modal -->
-  <div id="targetAchievedModal" class="hidden fixed inset-0 z-[110] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-emerald-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-5">
-      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
-        <i data-lucide="trophy" class="w-8 h-8 animate-bounce"></i>
-      </div>
-      <div>
-        <h3 class="text-2xl font-bold text-white">Shaandaar! Target Pura Hua 🎉</h3>
-        <p class="text-xs text-slate-300 mt-1">Aapne aaj ka <span id="achievedTargetText" class="font-bold text-emerald-400">6 Ghante</span> ka study goal achieve kar liya hai!</p>
-      </div>
-
-      <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 text-left space-y-3">
-        <label class="block text-xs font-semibold text-slate-300">Kya aap aaj ka target badhana chahte hain?</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="extendDailyTarget(60)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+1 Ghanta</button>
-          <button onclick="extendDailyTarget(120)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+2 Ghante</button>
-          <button onclick="extendDailyTarget(180)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+3 Ghante</button>
-        </div>
-      </div>
-
-      <div class="flex gap-2">
-        <button onclick="closeTargetModal()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition">
-          Bas Itna Hi Kafi Hai
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Subject Drilldown Modal -->
-  <div id="subjectDrilldownModal" class="hidden fixed inset-0 z-[90] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div class="flex items-center gap-3">
-          <div id="modalSubjectIconBadge" class="p-2.5 rounded-xl border">
-            <i data-lucide="bar-chart" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <h3 id="modalSubjectTitle" class="text-xl font-bold text-white">Subject Analytics</h3>
-            <p class="text-xs text-slate-400">Weekly & Monthly Performance Breakdown</p>
-          </div>
-        </div>
-        <button onclick="closeSubjectModal()" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800 border border-slate-700">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Hafte Ka Total</span>
-          <h4 id="modalSubjectWeeklyHours" class="text-2xl font-bold text-cyan-400 mt-1">0h 0m</h4>
-          <p class="text-[11px] text-slate-400 mt-1">Last 7 Days Progress</p>
-        </div>
-        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Mahine Ka Total</span>
-          <h4 id="modalSubjectMonthlyHours" class="text-2xl font-bold text-amber-400 mt-1">0h 0m</h4>
-          <p class="text-[11px] text-slate-400 mt-1">Current Month Progress</p>
-        </div>
-      </div>
-
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-5 space-y-3">
-        <div class="flex items-center justify-between">
-          <h5 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="trending-up" class="w-4 h-4 text-indigo-400"></i> Subject Progress Trends
-          </h5>
-          <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs">
-            <button onclick="switchDrilldownChart('week')" id="drillWeekBtn" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium">7 Days Trend</button>
-            <button onclick="switchDrilldownChart('month')" id="drillMonthBtn" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Month Trend</button>
-          </div>
-        </div>
-        <div class="relative h-48 w-full">
-          <canvas id="drilldownChartCanvas"></canvas>
-        </div>
-      </div>
-
-      <div class="space-y-3">
-        <h5 class="text-xs font-bold uppercase tracking-wider text-slate-300">Completed Topics In This Subject</h5>
-        <div id="modalTopicList" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Alarm Modal -->
-  <div id="alarmModal" class="hidden fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-emerald-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl animate-bounce">
-      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
-        <i data-lucide="bell-ring" class="w-8 h-8 animate-pulse"></i>
-      </div>
-      <h3 class="text-xl font-bold text-white mb-1">Session Complete!</h3>
-      <p id="alarmTopicText" class="text-sm text-slate-300 mb-6">Aapka study session poora ho gaya hai.</p>
-      <button onclick="stopAlarm()" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg transition">
-        Stop Alarm & Continue
-      </button>
-    </div>
-  </div>
-
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-950/60 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <div class="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-          <i data-lucide="shield-check" class="w-6 h-6"></i>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight">StudyTracker Pro</h1>
-          <p class="text-xs text-slate-400">Anti-Cheat Single Device Tracker</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button onclick="openAuthModal()" id="userAuthStatusBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-indigo-300 hover:bg-slate-700 transition">
-          <span id="cloudStatusIndicator" class="w-2 h-2 rounded-full bg-amber-400"></span>
-          <span id="userNameTag">Login (Name + Mail)</span>
-        </button>
-        <div class="flex items-center gap-2 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="currentDateDisplay" class="text-xs font-semibold text-slate-300"></span>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 mt-8">
-
-    <!-- Active Live Timer Box -->
-    <div id="activeTimerCard" class="hidden mb-8 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/50 rounded-2xl p-6 shadow-2xl">
-      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="flex items-center gap-4 text-left">
-          <div id="timerIconWrapper" class="p-3 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
-            <i id="timerHourglassIcon" data-lucide="hourglass" class="w-7 h-7 animate-spin"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span id="sessionStatusTag" class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">LOCKED SESSION</span>
-              <span id="liveSubjectTag" class="text-xs font-bold text-indigo-300"></span>
-            </div>
-            <h4 id="activeSessionTopic" class="text-base font-bold text-white mt-1">Topic Details...</h4>
-            <p id="liveStartTimeTag" class="text-xs text-slate-400">Started at: --:-- --</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="text-right">
-            <span class="text-xs text-slate-400 block font-medium">Time Left</span>
-            <span id="countdownDisplay" class="text-3xl font-mono font-black text-amber-400">00:00:00</span>
-          </div>
-          
-          <button id="pauseResumeBtn" onclick="togglePauseResumeSession()" class="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
-            <i id="pauseResumeIcon" data-lucide="pause" class="w-3.5 h-3.5"></i>
-            <span id="pauseResumeText">Pause</span>
-          </button>
-
-          <button onclick="abandonActiveSession()" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold rounded-xl transition">
-            Quit Session
-          </button>
-        </div>
-      </div>
+    <div id="status" class="status">
+        Playlist URL paste karke Load Playlist dabayein
     </div>
 
-    <!-- KPI Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Mahine Ka Total</p>
-        <h3 id="monthlyTotalHours" class="text-2xl font-bold text-amber-400 mt-1">0h 0m</h3>
-        <p class="text-xs text-slate-400 mt-2">This Month</p>
-      </div>
+    <div id="playlist"></div>
 
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Hafte Ka Total</p>
-        <h3 id="weeklyTotalHours" class="text-2xl font-bold text-cyan-400 mt-1">0h 0m</h3>
-        <p class="text-xs text-slate-400 mt-2">Last 7 Days</p>
-      </div>
+</div>
 
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Aaj Ki Padhai</p>
-        <h3 id="todayTotalHours" class="text-2xl font-bold text-indigo-400 mt-1">0h 0m</h3>
-        <p id="todayGoalTag" class="text-xs text-slate-400 mt-2">Daily Goal: 6 hrs</p>
-      </div>
+<div class="player">
 
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Topics Aaj</p>
-        <h3 id="todayTopicCount" class="text-2xl font-bold text-emerald-400 mt-1">0</h3>
-        <p class="text-xs text-slate-400 mt-2">Completed entries</p>
-      </div>
-    </div>
+    <div class="playerTop">
 
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      
-      <!-- Left Column -->
-      <div class="lg:col-span-5 space-y-6">
-        <div id="formWrapper" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold flex items-center gap-2">
-              <i data-lucide="play-circle" class="w-5 h-5 text-indigo-400"></i> Start Study Session
-            </h2>
-            <span class="text-[11px] font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-md">
-              Dropdown Select
-            </span>
-          </div>
-          
-          <form id="studyForm" class="space-y-4">
-            <div>
-              <div class="flex justify-between items-center mb-1">
-                <label class="block text-xs font-medium text-slate-300">Subject Select Karein</label>
-                <div class="flex items-center gap-2">
-                  <button type="button" onclick="openAddSubjectModal()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
-                  </button>
-                  <span class="text-slate-600">|</span>
-                  <button type="button" onclick="deleteCurrentSubject()" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete
-                  </button>
-                </div>
-              </div>
-              <div class="relative">
-                <select id="subjectSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white">
-                </select>
-              </div>
+        <img
+            id="nowImage"
+            src="https://via.placeholder.com/100"
+            alt="Album"
+        >
+
+        <div class="nowInfo">
+            <div class="nowTitle" id="nowTitle">
+                No Song Playing
             </div>
 
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Session Duration</label>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[11px] text-slate-400 mb-0.5">Hours</label>
-                  <select id="hoursSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
-                    <option value="0">0 Hour</option>
-                    <option value="1" selected>1 Hour</option>
-                    <option value="2">2 Hours</option>
-                    <option value="3">3 Hours</option>
-                    <option value="4">4 Hours</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[11px] text-slate-400 mb-0.5">Minutes</label>
-                  <select id="minutesSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
-                    <option value="0">0 Min</option>
-                    <option value="5" selected>5 Mins</option>
-                    <option value="10">10 Mins</option>
-                    <option value="15">15 Mins</option>
-                    <option value="20">20 Mins</option>
-                    <option value="25">25 Mins</option>
-                    <option value="30">30 Mins</option>
-                    <option value="35">35 Mins</option>
-                    <option value="40">40 Mins</option>
-                    <option value="45">45 Mins</option>
-                    <option value="50">50 Mins</option>
-                    <option value="55">55 Mins</option>
-                  </select>
-                </div>
-              </div>
+            <div class="nowArtist" id="nowArtist">
+                —
             </div>
+        </div>
 
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Topic Name / Chapter Goal</label>
-              <textarea id="topicInput" rows="3" required placeholder="e.g. Page no 40-50 tak"
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white"></textarea>
-            </div>
+        <div class="controls">
 
-            <button type="submit" id="startBtn"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
-              <i data-lucide="play" class="w-4 h-4"></i> Start Study Timer Now
+            <button class="control" onclick="previousSong()">⏮</button>
+
+            <button
+                class="control mainPlay"
+                id="mainPlay"
+                onclick="togglePlay()"
+            >
+                ▶
             </button>
-          </form>
+
+            <button class="control" onclick="nextSong()">⏭</button>
+
+            <button class="control" onclick="toggleShuffle()">🔀</button>
+
         </div>
 
-        <!-- Subject Split Card -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
-            <div>
-              <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i> Subject-Wise Split
-              </h3>
-              <span class="text-[10px] text-indigo-400 block mt-0.5">💡 Subject par click karke weekly/monthly graph dekhein</span>
-            </div>
-            
-            <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs self-start sm:self-auto">
-              <button onclick="setChartTimeframe('today')" id="chartTabToday" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition">Today</button>
-              <button onclick="setChartTimeframe('week')" id="chartTabWeek" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition">Weekly</button>
-              <button onclick="setChartTimeframe('month')" id="chartTabMonth" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition">Monthly</button>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center text-xs text-slate-400 px-1">
-            <span>Duration: <b id="chartTotalTime" class="text-indigo-300 font-semibold">0h 0m</b></span>
-            <div class="flex items-center gap-2">
-              <button onclick="toggleChartType('doughnut')" id="btnDoughnut" class="p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600" title="Donut Chart">
-                <i data-lucide="circle-dot" class="w-3.5 h-3.5"></i>
-              </button>
-              <button onclick="toggleChartType('bar')" id="btnBar" class="p-1 rounded bg-slate-900 text-slate-400 hover:bg-slate-800" title="Bar Chart">
-                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="relative h-56 w-full flex items-center justify-center cursor-pointer">
-            <canvas id="subjectChart"></canvas>
-            <div id="noChartDataMsg" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-xs">
-              <i data-lucide="pie-chart" class="w-8 h-8 mb-1 opacity-30"></i>
-              <span>Is timeframe me koi study entry nahi hai.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column -->
-      <div class="lg:col-span-7 space-y-6">
-        <div class="bg-gradient-to-br from-indigo-950/80 via-slate-800 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 shadow-xl">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-lg font-bold flex items-center gap-2 text-indigo-200">
-              <i data-lucide="sun-medium" class="w-5 h-5 text-amber-400"></i> Daily Performance Report
-            </h2>
-            <span class="text-xs text-indigo-300 font-medium">Real-Time Sync</span>
-          </div>
-
-          <!-- Comparison Card -->
-          <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 mb-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
-              <span class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-400"></i> Kal vs Aaj (Is Time Tak)
-              </span>
-              <span id="comparisonBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-md">--</span>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4 text-center">
-              <div class="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/40">
-                <p class="text-[11px] text-slate-400">Kal Is Samay Tak</p>
-                <h4 id="yesterdayTimeTillNow" class="text-base font-bold text-slate-300 mt-0.5">0h 0m</h4>
-              </div>
-              <div class="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/40">
-                <p class="text-[11px] text-slate-400">Aaj Ab Tak</p>
-                <h4 id="todayTimeTillNow" class="text-base font-bold text-indigo-400 mt-0.5">0h 0m</h4>
-              </div>
-            </div>
-            <p id="comparisonDiffText" class="text-xs text-center mt-3 text-slate-300 font-medium">Comparison calculate ho raha hai...</p>
-          </div>
-
-          <!-- Dynamic Progress Bar -->
-          <div class="space-y-1.5 mb-4">
-            <div class="flex justify-between text-xs font-semibold">
-              <span id="dynamicTargetLabel" class="text-slate-300">Daily Target (6 Hours)</span>
-              <span id="goalPercentText" class="text-indigo-400">0%</span>
-            </div>
-            <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
-              <div id="goalProgressBar" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-          </div>
-
-          <p id="motivationalText" class="text-xs italic text-slate-400 border-l-2 border-indigo-400 pl-3 py-0.5">
-            Session complete karein aur apni progress analyze karein.
-          </p>
-        </div>
-
-        <!-- History Container -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between border-b border-slate-700/80 pb-4 mb-4">
-            <h3 class="text-md font-bold flex items-center gap-2">
-              <i data-lucide="list-checks" class="w-5 h-5 text-indigo-400"></i> Study Logs History
-            </h3>
-            <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs">
-              <button onclick="changeView('month')" id="tabMonth" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Monthly</button>
-              <button onclick="changeView('week')" id="tabWeek" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Weekly</button>
-              <button onclick="changeView('today')" id="tabToday" class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium">Today</button>
-            </div>
-          </div>
-          <div id="logsContainer" class="space-y-3 max-h-[380px] overflow-y-auto pr-1"></div>
-        </div>
-      </div>
+        <input
+            class="volume"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+            onchange="audio.volume=this.value"
+        >
 
     </div>
-  </main>
 
-  <script>
-    const SUPABASE_PROJECT_URL = "https://yffohnbxwurnaajanvuc.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZm9obmJ4d3VybmFhamFudnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMjQ0MjIsImV4cCI6MjEwMjkwMDQyMn0.RcOjYyuf2Ip_giYl6ppcMi-SS76WwS4lnQSWyVJ8fv0";
-    
-    let supabaseClient = null;
-    try {
-      if (window.supabase && typeof window.supabase.createClient === 'function') {
-        supabaseClient = window.supabase.createClient(SUPABASE_PROJECT_URL, SUPABASE_ANON_KEY);
-      }
-    } catch(err) {
-      console.warn("Supabase initialization bypassed:", err);
+    <div class="progress">
+
+        <input
+            id="progress"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+            oninput="seekSong(this.value)"
+        >
+
+        <div class="time">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
+
+    </div>
+
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+
+/* =========================================
+   SETTINGS
+========================================= */
+
+const API_BASE =
+    "https://saavnapi-nine.vercel.app";
+
+/* =========================================
+   VARIABLES
+========================================= */
+
+const audio = document.getElementById("audio");
+
+let songs = [];
+let currentIndex = -1;
+let shuffle = false;
+
+
+/* =========================================
+   LOAD PLAYLIST
+========================================= */
+
+async function loadPlaylist(){
+
+    const url =
+        document.getElementById("playlistUrl").value.trim();
+
+    if(!url){
+        alert("JioSaavn playlist URL paste karein.");
+        return;
     }
 
-    const initialDefaultSubjects = [
-      'General Studies (GS)',
-      'Mathematics',
-      'Reasoning',
-      'Hindi',
-      'English',
-      'History',
-      'Geography',
-      'Science'
-    ];
+    const status =
+        document.getElementById("status");
 
-    let storedSubjects = null;
-    try {
-      storedSubjects = JSON.parse(localStorage.getItem('study_subjects_list'));
-    } catch(e) {
-      storedSubjects = null;
-    }
+    status.innerText = "⏳ Playlist loading...";
 
-    let subjects = (Array.isArray(storedSubjects) && storedSubjects.length > 0) ? storedSubjects : initialDefaultSubjects;
-    
-    let storedLogs = null;
-    try {
-      storedLogs = JSON.parse(localStorage.getItem('study_logs_data'));
-    } catch(e) {
-      storedLogs = null;
-    }
-    let logs = Array.isArray(storedLogs) ? storedLogs : [];
+    document.getElementById("playlist").innerHTML = "";
 
-    let storedActive = null;
-    try {
-      storedActive = JSON.parse(localStorage.getItem('active_study_session'));
-    } catch(e) {
-      storedActive = null;
-    }
-    let activeSession = storedActive;
+    try{
 
-    let currentProfile = null;
-    try {
-      currentProfile = JSON.parse(localStorage.getItem('study_user_profile'));
-    } catch(e) {
-      currentProfile = null;
-    }
+        const apiUrl =
+            API_BASE +
+            "/playlist/?query=" +
+            encodeURIComponent(url);
 
-    // Local device session ID
-    let currentSessionToken = localStorage.getItem('study_device_session_token');
-    if (!currentSessionToken) {
-      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('study_device_session_token', currentSessionToken);
-    }
+        const response =
+            await fetch(apiUrl);
 
-    let dailyTargetMins = parseInt(localStorage.getItem('daily_target_mins')) || 360;
-    let targetPromptShownForToday = localStorage.getItem('target_prompt_date') === getTodayDateString();
-
-    let currentFilter = 'today';
-    let currentChartTimeframe = 'week';
-    let currentChartType = 'doughnut';
-    let chartInstance = null;
-    let drilldownChartInstance = null;
-    let selectedDrilldownSubject = null;
-    let currentDrilldownView = 'week';
-    let timerInterval = null;
-    let alarmAudioInterval = null;
-    let sessionWatcherInterval = null;
-    let audioCtx = null;
-
-    const PALETTE_COLORS = [
-      '#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#8b5cf6',
-      '#3b82f6', '#14b8a6', '#f43f5e', '#eab308', '#a855f7', '#22c55e'
-    ];
-
-    function showToast(msg, isSuccess = true) {
-      const toast = document.getElementById('syncToast');
-      const dot = document.getElementById('syncToastDot');
-      const text = document.getElementById('syncToastMsg');
-      dot.className = `w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-400' : 'bg-rose-500 animate-ping'}`;
-      text.innerText = msg;
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 3500);
-    }
-
-    function getSubjectColor(subjectName) {
-      if (!subjectName) return '#6366f1';
-      let index = subjects.indexOf(subjectName);
-      if (index === -1) {
-        let hash = 0;
-        for (let i = 0; i < subjectName.length; i++) {
-          hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+        if(!response.ok){
+            throw new Error("API Error");
         }
-        index = Math.abs(hash) % PALETTE_COLORS.length;
-      }
-      return PALETTE_COLORS[index % PALETTE_COLORS.length];
+
+        const data =
+            await response.json();
+
+        /*
+          Different unofficial APIs may return
+          slightly different JSON structures.
+        */
+
+        songs =
+            extractSongs(data);
+
+        if(!songs.length){
+
+            throw new Error(
+                "Playlist me songs nahi mile."
+            );
+
+        }
+
+        status.innerText =
+            `🎵 ${songs.length} songs loaded`;
+
+        renderPlaylist();
+
+    }catch(error){
+
+        console.error(error);
+
+        status.innerHTML =
+            "❌ Playlist load nahi hui.<br>" +
+            "API temporarily unavailable ya playlist URL invalid ho sakta hai.";
+
     }
 
-    function getFormattedDate(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+
+/* =========================================
+   EXTRACT SONGS
+========================================= */
+
+function extractSongs(data){
+
+    let list = [];
+
+    if(Array.isArray(data)){
+        list = data;
     }
 
-    function getTodayDateString() {
-      return getFormattedDate(new Date());
+    else if(Array.isArray(data.songs)){
+        list = data.songs;
     }
 
-    function getYesterdayDateString() {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return getFormattedDate(yesterday);
+    else if(data.data){
+
+        if(Array.isArray(data.data)){
+            list = data.data;
+        }
+
+        else if(Array.isArray(data.data.songs)){
+            list = data.data.songs;
+        }
+
     }
 
-    function formatTime12Hour(input) {
-      if (!input) return '--:-- --';
-      if (typeof input === 'string' && (input.includes('AM') || input.includes('PM'))) return input;
+    return list
+        .map(normalizeSong)
+        .filter(song => song.title);
 
-      let hours, minutes;
-      if (input instanceof Date) {
-        hours = input.getHours();
-        minutes = input.getMinutes();
-      } else if (typeof input === 'string' && input.includes(':')) {
-        const parts = input.split(':');
-        hours = parseInt(parts[0], 10);
-        minutes = parseInt(parts[1], 10);
-      } else {
-        return input;
-      }
+}
 
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const strMinutes = minutes < 10 ? '0' + minutes : minutes;
-      const strHours = hours < 10 ? '0' + hours : hours;
-      return `${strHours}:${strMinutes} ${ampm}`;
-    }
 
-    document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+/* =========================================
+   NORMALIZE SONG DATA
+========================================= */
+
+function normalizeSong(song){
+
+    return {
+
+        id:
+            song.id ||
+            song.songid ||
+            song.songId ||
+            "",
+
+        title:
+            song.title ||
+            song.song ||
+            song.name ||
+            "Unknown Song",
+
+        artist:
+            song.singers ||
+            song.artist ||
+            song.primary_artists ||
+            song.music ||
+            "Unknown Artist",
+
+        image:
+            song.image_url ||
+            song.image ||
+            song.thumbnail ||
+            "https://via.placeholder.com/300",
+
+        url:
+            song.url ||
+            song.media_url ||
+            song.download_url ||
+            song.downloadUrl ||
+            "",
+
+        duration:
+            song.duration || 0
+
+    };
+
+}
+
+
+/* =========================================
+   RENDER PLAYLIST
+========================================= */
+
+function renderPlaylist(){
+
+    const container =
+        document.getElementById("playlist");
+
+    container.innerHTML = "";
+
+    songs.forEach((song,index)=>{
+
+        const div =
+            document.createElement("div");
+
+        div.className = "song";
+
+        div.id =
+            "song-" + index;
+
+        div.innerHTML = `
+
+            <img
+                src="${escapeHtml(song.image)}"
+                loading="lazy"
+            >
+
+            <div class="songInfo">
+
+                <div class="songTitle">
+                    ${escapeHtml(song.title)}
+                </div>
+
+                <div class="artist">
+                    ${escapeHtml(song.artist)}
+                </div>
+
+            </div>
+
+            <button
+                class="playBtn"
+                onclick="playSong(${index})"
+            >
+                ▶
+            </button>
+
+        `;
+
+        container.appendChild(div);
+
     });
 
-    // ==========================================
-    // 2. MODAL & DROPDOWN MANAGEMENT
-    // ==========================================
-    function renderSubjectDropdown(selectedSubject = '') {
-      const select = document.getElementById('subjectSelect');
-      if (!select) return;
-      if (!subjects || subjects.length === 0) {
-        subjects = [...initialDefaultSubjects];
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-      }
+}
 
-      select.innerHTML = subjects.map(sub => `
-        <option value="${sub}" ${sub === selectedSubject ? 'selected' : ''}>${sub}</option>
-      `).join('');
-    }
 
-    function openAddSubjectModal() {
-      document.getElementById('newSubjectNameInput').value = '';
-      document.getElementById('addSubjectModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('newSubjectNameInput').focus(), 50);
-      lucide.createIcons();
-    }
+/* =========================================
+   PLAY SONG
+========================================= */
 
-    function closeAddSubjectModal() {
-      document.getElementById('addSubjectModal').classList.add('hidden');
-    }
+function playSong(index){
 
-    document.getElementById('addSubjectForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const input = document.getElementById('newSubjectNameInput');
-      const clean = input.value.trim();
-      if (!clean) return;
-
-      if (!subjects.includes(clean)) {
-        subjects.push(clean);
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        saveSubjectToCloud(clean);
-        renderSubjectDropdown(clean);
-        renderAll();
-      } else {
-        renderSubjectDropdown(clean);
-      }
-      closeAddSubjectModal();
-    });
-
-    function deleteCurrentSubject() {
-      const select = document.getElementById('subjectSelect');
-      const subjectToDelete = select.value;
-      if (!subjectToDelete) return;
-
-      if (subjects.length <= 1) {
-        alert("Kam se kam ek subject ka hona zaroori hai!");
+    if(!songs[index]){
         return;
-      }
-
-      if (confirm(`Kya aap subject "${subjectToDelete}" ko list se hatana chahte hain?`)) {
-        subjects = subjects.filter(s => s !== subjectToDelete);
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        deleteSubjectFromCloud(subjectToDelete);
-        renderSubjectDropdown(subjects[0]);
-        renderAll();
-      }
     }
 
-    // ==========================================
-    // 3. SINGLE ACTIVE DEVICE SESSION ENGINE
-    // ==========================================
-    function updateUserUI() {
-      const tag = document.getElementById('userNameTag');
-      const ind = document.getElementById('cloudStatusIndicator');
-      if (currentProfile && currentProfile.name) {
-        tag.innerText = currentProfile.name;
-        ind.className = "w-2 h-2 rounded-full bg-emerald-400";
-      } else {
-        tag.innerText = 'Login (Name + Mail)';
-        ind.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-      }
+    currentIndex = index;
+
+    const song =
+        songs[index];
+
+    if(!song.url){
+
+        alert(
+            "Is song ka playable audio URL API ne provide nahi kiya."
+        );
+
+        return;
+
     }
 
-    function openAuthModal() {
-      if (currentProfile) {
-        if (confirm(`Aap currently "${currentProfile.name}" (${currentProfile.email}) ke roop me logged in hain. Logout karna chahte hain?`)) {
-          performLogout();
-          showToast("Logged out successfully");
+    audio.src = song.url;
+
+    audio.play()
+        .then(()=>{
+            updatePlayer(song);
+        })
+        .catch(error=>{
+            console.error(error);
+            alert(
+                "Song play nahi ho pa raha."
+            );
+        });
+
+    updateActiveSong();
+
+}
+
+
+/* =========================================
+   UPDATE PLAYER
+========================================= */
+
+function updatePlayer(song){
+
+    document.getElementById("nowTitle")
+        .innerText = song.title;
+
+    document.getElementById("nowArtist")
+        .innerText = song.artist;
+
+    document.getElementById("nowImage")
+        .src = song.image;
+
+    document.getElementById("mainPlay")
+        .innerText = "⏸";
+
+}
+
+
+/* =========================================
+   ACTIVE SONG
+========================================= */
+
+function updateActiveSong(){
+
+    document
+        .querySelectorAll(".song")
+        .forEach(el =>
+            el.classList.remove("active")
+        );
+
+    const active =
+        document.getElementById(
+            "song-" + currentIndex
+        );
+
+    if(active){
+
+        active.classList.add("active");
+
+        active.scrollIntoView({
+            behavior:"smooth",
+            block:"center"
+        });
+
+    }
+
+}
+
+
+/* =========================================
+   PLAY / PAUSE
+========================================= */
+
+function togglePlay(){
+
+    if(!audio.src){
+
+        if(songs.length){
+            playSong(0);
         }
+
         return;
-      }
-      document.getElementById('loginNameInput').value = '';
-      document.getElementById('loginEmailInput').value = '';
-      document.getElementById('authErrorMsg').classList.add('hidden');
-      document.getElementById('authModal').classList.remove('hidden');
-      lucide.createIcons();
     }
 
-    function closeAuthModal() {
-      document.getElementById('authModal').classList.add('hidden');
+    if(audio.paused){
+
+        audio.play();
+
+        document.getElementById(
+            "mainPlay"
+        ).innerText = "⏸";
+
+    }else{
+
+        audio.pause();
+
+        document.getElementById(
+            "mainPlay"
+        ).innerText = "▶";
+
     }
 
-    function performLogout() {
-      currentProfile = null;
-      localStorage.removeItem('study_user_profile');
-      if (sessionWatcherInterval) {
-        clearInterval(sessionWatcherInterval);
-        sessionWatcherInterval = null;
-      }
-      updateUserUI();
+}
+
+
+/* =========================================
+   NEXT
+========================================= */
+
+function nextSong(){
+
+    if(!songs.length){
+        return;
     }
 
-    function triggerForceLogoutUI() {
-      performLogout();
-      document.getElementById('forceLogoutModal').classList.remove('hidden');
-      lucide.createIcons();
-    }
+    let next;
 
-    function acknowledgeForceLogout() {
-      document.getElementById('forceLogoutModal').classList.add('hidden');
-      location.reload();
-    }
+    if(shuffle){
 
-    // Heartbeat watcher: Checks if another device claimed the session
-    function startSessionWatcher() {
-      if (sessionWatcherInterval) clearInterval(sessionWatcherInterval);
-      if (!supabaseClient || !currentProfile) return;
+        next =
+            Math.floor(
+                Math.random() * songs.length
+            );
 
-      sessionWatcherInterval = setInterval(async () => {
-        if (!currentProfile) return;
-        try {
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('current_session_id')
-            .eq('email', currentProfile.email)
-            .maybeSingle();
+    }else{
 
-          if (!error && data && data.current_session_id) {
-            if (data.current_session_id !== currentSessionToken) {
-              triggerForceLogoutUI();
-            }
-          }
-        } catch (e) {
-          console.warn("Session check bypass:", e);
+        next =
+            currentIndex + 1;
+
+        if(next >= songs.length){
+            next = 0;
         }
-      }, 5000); // Check every 5 seconds
+
     }
 
-    document.getElementById('simpleLoginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const nameInput = document.getElementById('loginNameInput').value.trim();
-      const emailInput = document.getElementById('loginEmailInput').value.trim().toLowerCase();
-      const errorMsg = document.getElementById('authErrorMsg');
+    playSong(next);
 
-      if (!emailInput || !nameInput) return;
+}
 
-      // Generate fresh session token for this device
-      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('study_device_session_token', currentSessionToken);
 
-      if (!supabaseClient) {
-        currentProfile = { name: nameInput, email: emailInput };
-        localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
-        closeAuthModal();
-        updateUserUI();
-        showToast("Offline Profile Set");
+/* =========================================
+   PREVIOUS
+========================================= */
+
+function previousSong(){
+
+    if(!songs.length){
         return;
-      }
+    }
 
-      try {
-        // 1. Fetch or create profile using UPSERT with current_session_id
-        const { data: existingUser, error: fetchErr } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .eq('email', emailInput)
-          .maybeSingle();
+    let previous =
+        currentIndex - 1;
 
-        if (fetchErr) throw fetchErr;
+    if(previous < 0){
+        previous =
+            songs.length - 1;
+    }
 
-        if (existingUser) {
-          if (existingUser.name.trim().toLowerCase() !== nameInput.toLowerCase()) {
-            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya wahi naam enter karein.`;
-            errorMsg.classList.remove('hidden');
+    playSong(previous);
+
+}
+
+
+/* =========================================
+   AUTO NEXT
+========================================= */
+
+audio.addEventListener(
+    "ended",
+    nextSong
+);
+
+
+/* =========================================
+   PROGRESS
+========================================= */
+
+audio.addEventListener(
+    "timeupdate",
+    ()=>{
+
+        if(!audio.duration){
             return;
-          }
         }
 
-        // Claim session for this device
-        const { error: upsertErr } = await supabaseClient
-          .from('profiles')
-          .upsert([{ 
-            email: emailInput, 
-            name: nameInput,
-            current_session_id: currentSessionToken 
-          }]);
+        const percentage =
+            (audio.currentTime /
+            audio.duration) * 100;
 
-        if (upsertErr) throw upsertErr;
+        document.getElementById(
+            "progress"
+        ).value = percentage;
 
-        currentProfile = { name: nameInput, email: emailInput };
-        localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
-        closeAuthModal();
-        updateUserUI();
-        showToast(`Welcome, ${nameInput}! Active on this device 📱`);
+        document.getElementById(
+            "currentTime"
+        ).innerText =
+            formatTime(audio.currentTime);
 
-        // 2. Perform Full Bidirectional Sync & start single session watcher
-        await syncDataWithCloud();
-        startSessionWatcher();
+        document.getElementById(
+            "duration"
+        ).innerText =
+            formatTime(audio.duration);
 
-      } catch (err) {
-        console.error("Login Auth Error:", err);
-        errorMsg.innerText = "Error: " + (err.message || "Database connection error");
-        errorMsg.classList.remove('hidden');
-      }
-    });
-
-    async function syncDataWithCloud() {
-      if (!supabaseClient || !currentProfile) return;
-
-      try {
-        // A. Fetch Cloud Logs
-        const { data: cloudLogs, error: logErr } = await supabaseClient
-          .from('study_logs')
-          .select('*')
-          .eq('user_email', currentProfile.email);
-
-        if (logErr) throw logErr;
-
-        // B. Upload local logs that are missing on Cloud
-        const cloudIds = new Set((cloudLogs || []).map(l => l.id));
-        const localLogsToUpload = logs.filter(l => !cloudIds.has(l.id));
-
-        if (localLogsToUpload.length > 0) {
-          const payload = localLogsToUpload.map(l => ({
-            id: l.id,
-            user_email: currentProfile.email,
-            subject: l.subject,
-            topic: l.topic,
-            duration: l.duration,
-            start_time: l.startTime,
-            end_time: l.endTime,
-            end_timestamp: l.endTimestamp || new Date().getTime(),
-            date: l.date
-          }));
-          await supabaseClient.from('study_logs').upsert(payload);
-        }
-
-        // C. Combine & Refresh local logs
-        const { data: refreshedLogs } = await supabaseClient
-          .from('study_logs')
-          .select('*')
-          .eq('user_email', currentProfile.email)
-          .order('created_at', { ascending: false });
-
-        if (refreshedLogs) {
-          logs = refreshedLogs.map(l => ({
-            id: l.id,
-            subject: l.subject,
-            topic: l.topic,
-            duration: l.duration,
-            startTime: l.start_time,
-            endTime: l.end_time,
-            endTimestamp: l.end_timestamp,
-            date: l.date,
-            createdAt: l.created_at
-          }));
-          localStorage.setItem('study_logs_data', JSON.stringify(logs));
-        }
-
-        // D. Sync Custom Subjects
-        const { data: cloudSubs } = await supabaseClient
-          .from('study_subjects')
-          .select('name')
-          .eq('user_email', currentProfile.email);
-
-        const cloudSubNames = new Set((cloudSubs || []).map(s => s.name));
-        const localSubsToUpload = subjects.filter(s => !initialDefaultSubjects.includes(s) && !cloudSubNames.has(s));
-
-        if (localSubsToUpload.length > 0) {
-          const subPayload = localSubsToUpload.map(name => ({
-            user_email: currentProfile.email,
-            name: name
-          }));
-          await supabaseClient.from('study_subjects').insert(subPayload);
-        }
-
-        if (cloudSubs && cloudSubs.length > 0) {
-          cloudSubs.forEach(s => {
-            if (!subjects.includes(s.name)) subjects.push(s.name);
-          });
-          localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        }
-
-        renderSubjectDropdown();
-        renderAll();
-        showToast("🟢 Cloud Synced Successfully!");
-      } catch (err) {
-        console.error("Sync error:", err);
-        showToast("⚠️ Cloud Sync Warning", false);
-      }
     }
+);
 
-    async function saveLogToCloud(newLog) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        const { error } = await supabaseClient.from('study_logs').upsert([{
-          id: newLog.id,
-          user_email: currentProfile.email,
-          subject: newLog.subject,
-          topic: newLog.topic,
-          duration: newLog.duration,
-          start_time: newLog.startTime,
-          end_time: newLog.endTime,
-          end_timestamp: newLog.endTimestamp,
-          date: newLog.date
-        }]);
-        if (error) throw error;
-        showToast("Session saved to Cloud ☁️");
-      } catch (err) {
-        console.error("Cloud log save error:", err);
-        showToast("Saved Locally", false);
-      }
-    }
 
-    async function saveSubjectToCloud(subjectName) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('study_subjects').insert([{
-          user_email: currentProfile.email,
-          name: subjectName
-        }]);
-      } catch (err) {
-        console.error("Cloud subject save error:", err);
-      }
-    }
+/* =========================================
+   SEEK
+========================================= */
 
-    async function deleteSubjectFromCloud(subjectName) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('study_subjects').delete().eq('name', subjectName).eq('user_email', currentProfile.email);
-      } catch (err) {
-        console.error("Cloud subject delete error:", err);
-      }
-    }
+function seekSong(value){
 
-    // ==========================================
-    // 4. TIMER & SESSION HANDLERS
-    // ==========================================
-    function playBeep() {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(900, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    function triggerAlarm(topicName) {
-      document.getElementById('alarmTopicText').innerText = `"${topicName}" session complete & permanently saved!`;
-      document.getElementById('alarmModal').classList.remove('hidden');
-
-      if (navigator.vibrate) navigator.vibrate([600, 300, 600, 300, 600]);
-
-      playBeep();
-      alarmAudioInterval = setInterval(() => {
-        playBeep();
-        if (navigator.vibrate) navigator.vibrate([600, 300, 600]);
-      }, 1000);
-    }
-
-    function stopAlarm() {
-      if (alarmAudioInterval) {
-        clearInterval(alarmAudioInterval);
-        alarmAudioInterval = null;
-      }
-      if (navigator.vibrate) navigator.vibrate(0);
-      document.getElementById('alarmModal').classList.add('hidden');
-    }
-
-    function togglePauseResumeSession() {
-      if (!activeSession) return;
-
-      if (!activeSession.isPaused) {
-        const now = new Date().getTime();
-        const remaining = Math.max(0, activeSession.endTimestamp - now);
-        activeSession.isPaused = true;
-        activeSession.remainingMs = remaining;
-        localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-        checkActiveSessionTimer();
-      } else {
-        const now = new Date().getTime();
-        activeSession.isPaused = false;
-        activeSession.endTimestamp = now + (activeSession.remainingMs || 0);
-        localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-        checkActiveSessionTimer();
-      }
-    }
-
-    function showTargetAchievedModal() {
-      document.getElementById('achievedTargetText').innerText = formatTime(dailyTargetMins);
-      document.getElementById('targetAchievedModal').classList.remove('hidden');
-      localStorage.setItem('target_prompt_date', getTodayDateString());
-      targetPromptShownForToday = true;
-      lucide.createIcons();
-    }
-
-    function extendDailyTarget(additionalMinutes) {
-      dailyTargetMins += additionalMinutes;
-      localStorage.setItem('daily_target_mins', dailyTargetMins.toString());
-      closeTargetModal();
-      renderAll();
-    }
-
-    function closeTargetModal() {
-      document.getElementById('targetAchievedModal').classList.add('hidden');
-    }
-
-    function checkActiveSessionTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-
-      if (!activeSession) {
-        document.getElementById('activeTimerCard').classList.add('hidden');
-        document.getElementById('startBtn').disabled = false;
-        document.getElementById('startBtn').innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Start Study Timer Now`;
-        lucide.createIcons();
+    if(!audio.duration){
         return;
-      }
-
-      document.getElementById('activeTimerCard').classList.remove('hidden');
-      
-      const subColor = getSubjectColor(activeSession.subject);
-      const subTag = document.getElementById('liveSubjectTag');
-      subTag.innerText = activeSession.subject;
-      subTag.style.color = subColor;
-
-      document.getElementById('activeSessionTopic').innerText = activeSession.topic;
-      document.getElementById('liveStartTimeTag').innerText = `Started at: ${formatTime12Hour(activeSession.startTime)}`;
-      
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('startBtn').innerHTML = `<i data-lucide="lock" class="w-4 h-4"></i> Session in Progress...`;
-
-      const pauseBtn = document.getElementById('pauseResumeBtn');
-      const pauseText = document.getElementById('pauseResumeText');
-      const statusTag = document.getElementById('sessionStatusTag');
-      const hourglass = document.getElementById('timerHourglassIcon');
-
-      if (activeSession.isPaused) {
-        statusTag.innerText = "SESSION PAUSED";
-        statusTag.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
-        pauseText.innerText = "Resume";
-        pauseBtn.className = "px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5";
-        hourglass.classList.remove('animate-spin');
-
-        const totalSec = Math.floor((activeSession.remainingMs || 0) / 1000);
-        const hours = Math.floor(totalSec / 3600);
-        const minutes = Math.floor((totalSec % 3600) / 60);
-        const seconds = totalSec % 60;
-        document.getElementById('countdownDisplay').innerText = 
-          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        lucide.createIcons();
-        return;
-      }
-
-      statusTag.innerText = "LOCKED SESSION";
-      statusTag.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-      pauseText.innerText = "Pause";
-      pauseBtn.className = "px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5";
-      hourglass.classList.add('animate-spin');
-
-      function updateClock() {
-        const now = new Date().getTime();
-        const distance = activeSession.endTimestamp - now;
-
-        if (distance <= 0) {
-          clearInterval(timerInterval);
-          
-          const completedLog = {
-            id: Date.now().toString(),
-            subject: activeSession.subject,
-            topic: activeSession.topic,
-            duration: activeSession.duration,
-            startTime: formatTime12Hour(activeSession.startTime),
-            endTime: formatTime12Hour(new Date()),
-            endTimestamp: activeSession.endTimestamp,
-            date: activeSession.date,
-            createdAt: new Date().toISOString()
-          };
-
-          logs.unshift(completedLog);
-          localStorage.setItem('study_logs_data', JSON.stringify(logs));
-          saveLogToCloud(completedLog);
-          
-          const topicName = activeSession.topic;
-          localStorage.removeItem('active_study_session');
-          activeSession = null;
-
-          document.getElementById('activeTimerCard').classList.add('hidden');
-          renderAll();
-          checkActiveSessionTimer();
-          triggerAlarm(topicName);
-        } else {
-          const totalSeconds = Math.floor(distance / 1000);
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
-          const seconds = totalSeconds % 60;
-          
-          document.getElementById('countdownDisplay').innerText = 
-            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-      }
-
-      updateClock();
-      timerInterval = setInterval(updateClock, 1000);
-      lucide.createIcons();
     }
 
-    function abandonActiveSession() {
-      if (confirm("Kya aap session beech me chhodna chahte hain?")) {
-        if (timerInterval) clearInterval(timerInterval);
-        localStorage.removeItem('active_study_session');
-        activeSession = null;
-        checkActiveSessionTimer();
-      }
+    audio.currentTime =
+        (value / 100) *
+        audio.duration;
+
+}
+
+
+/* =========================================
+   SHUFFLE
+========================================= */
+
+function toggleShuffle(){
+
+    shuffle = !shuffle;
+
+    alert(
+        shuffle
+        ? "🔀 Shuffle ON"
+        : "➡️ Shuffle OFF"
+    );
+
+}
+
+
+/* =========================================
+   FORMAT TIME
+========================================= */
+
+function formatTime(seconds){
+
+    if(!seconds || isNaN(seconds)){
+        return "0:00";
     }
 
-    document.getElementById('studyForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      if (activeSession) {
-        alert("Ek session pehle se chal raha hai!");
-        return;
-      }
+    const min =
+        Math.floor(seconds / 60);
 
-      const subject = document.getElementById('subjectSelect').value;
-      const hours = parseInt(document.getElementById('hoursSelect').value, 10);
-      const minutes = parseInt(document.getElementById('minutesSelect').value, 10);
-      const durationMinutes = (hours * 60) + minutes;
+    const sec =
+        Math.floor(seconds % 60)
+        .toString()
+        .padStart(2,"0");
 
-      if (durationMinutes <= 0) {
-        alert("Kripya kam se kam 5 minutes ka session select karein!");
-        return;
-      }
+    return min + ":" + sec;
 
-      const topic = document.getElementById('topicInput').value.trim();
-      const startTimeObj = new Date();
-      const endTimeObj = new Date(startTimeObj.getTime() + durationMinutes * 60000);
+}
 
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      activeSession = {
-        subject,
-        topic,
-        duration: durationMinutes,
-        startTime: formatTime12Hour(startTimeObj),
-        endTime: formatTime12Hour(endTimeObj),
-        date: getTodayDateString(),
-        endTimestamp: endTimeObj.getTime(),
-        isPaused: false,
-        remainingMs: durationMinutes * 60000
-      };
+/* =========================================
+   HTML ESCAPE
+========================================= */
 
-      localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-      document.getElementById('topicInput').value = '';
-      checkActiveSessionTimer();
-    });
+function escapeHtml(text){
 
-    function changeView(filter) {
-      currentFilter = filter;
-      ['tabToday', 'tabWeek', 'tabMonth'].forEach(tab => {
-        document.getElementById(tab).className = 'px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      });
-      if (filter === 'today') document.getElementById('tabToday').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      if (filter === 'week') document.getElementById('tabWeek').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      if (filter === 'month') document.getElementById('tabMonth').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      renderLogsList();
-    }
+    return String(text || "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
 
-    function getFilteredLogs(filter) {
-      const now = new Date();
-      const todayStr = getTodayDateString();
-      return logs.filter(log => {
-        const logDate = new Date(log.date);
-        if (filter === 'today') return log.date === todayStr;
-        if (filter === 'week') {
-          const diffDays = (now - logDate) / (1000 * 60 * 60 * 24);
-          return diffDays >= 0 && diffDays <= 7;
-        }
-        if (filter === 'month') return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-        return true;
-      });
-    }
+}
 
-    function formatTime(minutes) {
-      return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-    }
+</script>
 
-    function updateComparisonData(todayMins) {
-      const yesterdayStr = getYesterdayDateString();
-      const now = new Date();
-      const currentTimestamp = now.getTime();
-
-      const yesterdayLogs = logs.filter(log => {
-        if (log.date !== yesterdayStr) return false;
-        if (log.endTimestamp) {
-          const yesterdayCorrespondingTime = currentTimestamp - (24 * 60 * 60 * 1000);
-          return log.endTimestamp <= yesterdayCorrespondingTime;
-        }
-        return true;
-      });
-
-      const yesterdayMinsTillNow = yesterdayLogs.reduce((acc, curr) => acc + curr.duration, 0);
-
-      document.getElementById('yesterdayTimeTillNow').innerText = formatTime(yesterdayMinsTillNow);
-      
-      const todayElement = document.getElementById('todayTimeTillNow');
-      todayElement.innerText = formatTime(todayMins);
-
-      const diff = todayMins - yesterdayMinsTillNow;
-      const badge = document.getElementById('comparisonBadge');
-      const text = document.getElementById('comparisonDiffText');
-
-      if (diff > 0) {
-        todayElement.className = "text-base font-bold text-emerald-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        badge.innerText = `+${formatTime(diff)} Zyada 🚀`;
-        text.innerHTML = `Shaandaar! Aaj aapne kal se is time tak <b class="text-emerald-400 font-bold">${formatTime(diff)} zyada padhai</b> ki hai.`;
-      } else if (diff < 0) {
-        todayElement.className = "text-base font-bold text-rose-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/30";
-        badge.innerText = `-${formatTime(Math.abs(diff))} Kam ⚠️`;
-        text.innerHTML = `Savdhan! Aaj aap kal se is samay tak <b class="text-rose-400 font-bold">${formatTime(Math.abs(diff))} peeche</b> hain. Raat tak target pura karein!`;
-      } else {
-        todayElement.className = "text-base font-bold text-indigo-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-slate-700 text-slate-300";
-        badge.innerText = "Barabar (Equal)";
-        text.innerHTML = `Aaj aur kal is time tak padhai bilkul barabar (<b class="text-indigo-400">${formatTime(todayMins)}</b>) rahi hai.`;
-      }
-    }
-
-    function updateKPICards() {
-      const monthLogs = getFilteredLogs('month');
-      const monthMins = monthLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('monthlyTotalHours').innerText = formatTime(monthMins);
-
-      const weekLogs = getFilteredLogs('week');
-      const weekMins = weekLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('weeklyTotalHours').innerText = formatTime(weekMins);
-
-      const todayLogs = getFilteredLogs('today');
-      const todayMins = todayLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('todayTotalHours').innerText = formatTime(todayMins);
-      document.getElementById('todayGoalTag').innerText = `Daily Goal: ${formatTime(dailyTargetMins)}`;
-      document.getElementById('dynamicTargetLabel').innerText = `Daily Target (${formatTime(dailyTargetMins)})`;
-
-      document.getElementById('todayTopicCount').innerText = todayLogs.length;
-
-      updateComparisonData(todayMins);
-
-      const percent = Math.min(Math.round((todayMins / dailyTargetMins) * 100), 100);
-      document.getElementById('goalPercentText').innerText = `${percent}%`;
-      document.getElementById('goalProgressBar').style.width = `${percent}%`;
-
-      if (todayMins >= dailyTargetMins && !targetPromptShownForToday) {
-        showTargetAchievedModal();
-      }
-
-      const msg = document.getElementById('motivationalText');
-      if (todayMins >= dailyTargetMins) {
-        msg.innerText = `Shaandaar! Aaj ka ${formatTime(dailyTargetMins)} ka target pura ho gaya! Extra time add karke new record banayein.`;
-        msg.className = "text-xs font-semibold text-emerald-400 border-l-2 border-emerald-400 pl-3 py-0.5";
-      } else if (todayMins > 0) {
-        msg.innerText = `Shaam tak ${formatTime(todayMins)} real padhai hui hai. Target se ${formatTime(dailyTargetMins - todayMins)} bache hain.`;
-        msg.className = "text-xs italic text-slate-300 border-l-2 border-indigo-400 pl-3 py-0.5";
-      } else {
-        msg.innerText = "Live study session start karein!";
-        msg.className = "text-xs italic text-slate-400 border-l-2 border-slate-600 pl-3 py-0.5";
-      }
-    }
-
-    function renderLogsList() {
-      const container = document.getElementById('logsContainer');
-      const filtered = getFilteredLogs(currentFilter);
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-8 text-slate-500 text-sm">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            Koi completed session nahi mila.
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      container.innerHTML = filtered.map(item => {
-        const subColor = getSubjectColor(item.subject);
-        return `
-          <div class="bg-slate-900/80 border border-slate-700/60 p-3.5 rounded-xl space-y-1.5 hover:border-slate-600 transition">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold transition" style="background-color: ${subColor}20; color: ${subColor}; border: 1px solid ${subColor}40;">
-                ${item.subject}
-              </span>
-              <span class="text-sm font-semibold text-slate-100">${item.topic}</span>
-            </div>
-
-            <div class="text-xs text-slate-300 font-mono flex items-center gap-1.5">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-400"></i>
-              <span>${formatTime(item.duration)} (${formatTime12Hour(item.startTime)} - ${formatTime12Hour(item.endTime)})</span>
-            </div>
-
-            <div class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-              <i data-lucide="calendar" class="w-3.5 h-3.5 text-emerald-400"></i>
-              <span>${item.date}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      lucide.createIcons();
-    }
-
-    function setChartTimeframe(timeframe) {
-      currentChartTimeframe = timeframe;
-      ['chartTabToday', 'chartTabWeek', 'chartTabMonth'].forEach(tab => {
-        document.getElementById(tab).className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition';
-      });
-      if (timeframe === 'today') document.getElementById('chartTabToday').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
-      if (timeframe === 'week') document.getElementById('chartTabWeek').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
-      if (timeframe === 'month') document.getElementById('chartTabMonth').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
-
-      updateChart();
-    }
-
-    function toggleChartType(type) {
-      currentChartType = type;
-      if (type === 'doughnut') {
-        document.getElementById('btnDoughnut').className = 'p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600';
-        document.getElementById('btnBar').className = 'p-1 rounded bg-slate-900 text-slate-400 hover:bg-slate-800';
-      } else {
-        document.getElementById('btnBar').className = 'p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600';
-        document.getElementById('btnDoughnut').className = 'p-1 rounded bg-slate-900 text-slate-400 hover:bg-slate-800';
-      }
-      updateChart();
-    }
-
-    function updateChart() {
-      const filteredForChart = getFilteredLogs(currentChartTimeframe);
-      const subjectMap = {};
-      let totalMins = 0;
-
-      filteredForChart.forEach(log => {
-        subjectMap[log.subject] = (subjectMap[log.subject] || 0) + log.duration;
-        totalMins += log.duration;
-      });
-
-      document.getElementById('chartTotalTime').innerText = formatTime(totalMins);
-
-      const labels = Object.keys(subjectMap);
-      const data = Object.values(subjectMap);
-      const noDataMsg = document.getElementById('noChartDataMsg');
-
-      if (chartInstance) chartInstance.destroy();
-
-      if (labels.length === 0) {
-        noDataMsg.classList.remove('hidden');
-        lucide.createIcons();
-        return;
-      } else {
-        noDataMsg.classList.add('hidden');
-      }
-
-      const ctx = document.getElementById('subjectChart').getContext('2d');
-      const chartColors = labels.map(sub => getSubjectColor(sub));
-
-      chartInstance = new Chart(ctx, {
-        type: currentChartType,
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: chartColors,
-            borderWidth: currentChartType === 'doughnut' ? 2 : 0,
-            borderColor: '#1e293b',
-            borderRadius: currentChartType === 'bar' ? 6 : 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          onClick: (evt, elements) => {
-            if (elements && elements.length > 0) {
-              const elementIndex = elements[0].index;
-              const clickedSubject = labels[elementIndex];
-              openSubjectDrilldownModal(clickedSubject);
-            }
-          },
-          plugins: {
-            legend: {
-              display: currentChartType === 'doughnut',
-              position: 'bottom',
-              labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return ` ${context.label}: ${formatTime(context.raw)} (Click for Deep Analytics)`;
-                }
-              }
-            }
-          },
-          scales: currentChartType === 'bar' ? {
-            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-            y: {
-              ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) },
-              grid: { color: '#334155' }
-            }
-          } : {}
-        }
-      });
-    }
-
-    function openSubjectDrilldownModal(subjectName) {
-      selectedDrilldownSubject = subjectName;
-      document.getElementById('modalSubjectTitle').innerText = subjectName;
-
-      const subColor = getSubjectColor(subjectName);
-      const iconBadge = document.getElementById('modalSubjectIconBadge');
-      iconBadge.style.backgroundColor = `${subColor}20`;
-      iconBadge.style.borderColor = `${subColor}40`;
-      iconBadge.style.color = subColor;
-
-      const subjectLogs = logs.filter(l => l.subject === subjectName);
-      const now = new Date();
-
-      const weeklyMins = subjectLogs.filter(l => {
-        const diffDays = (now - new Date(l.date)) / (1000 * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 7;
-      }).reduce((acc, curr) => acc + curr.duration, 0);
-
-      const monthlyMins = subjectLogs.filter(l => {
-        const d = new Date(l.date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).reduce((acc, curr) => acc + curr.duration, 0);
-
-      document.getElementById('modalSubjectWeeklyHours').innerText = formatTime(weeklyMins);
-      document.getElementById('modalSubjectMonthlyHours').innerText = formatTime(monthlyMins);
-
-      const topicList = document.getElementById('modalTopicList');
-      if (subjectLogs.length === 0) {
-        topicList.innerHTML = `<p class="text-xs text-slate-500">Koi entry nahi mili.</p>`;
-      } else {
-        topicList.innerHTML = subjectLogs.map(l => `
-          <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl space-y-1 text-xs">
-            <p class="font-semibold text-slate-200">${l.topic}</p>
-            <div class="text-[11px] text-slate-300 font-mono">${formatTime(l.duration)} (${formatTime12Hour(l.startTime)} - ${formatTime12Hour(l.endTime)})</div>
-            <div class="text-[10px] text-slate-400 font-mono">${l.date}</div>
-          </div>
-        `).join('');
-      }
-
-      currentDrilldownView = 'week';
-      updateDrilldownChartUI();
-      renderDrilldownChart();
-
-      document.getElementById('subjectDrilldownModal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeSubjectModal() {
-      document.getElementById('subjectDrilldownModal').classList.add('hidden');
-      if (drilldownChartInstance) {
-        drilldownChartInstance.destroy();
-        drilldownChartInstance = null;
-      }
-    }
-
-    function switchDrilldownChart(view) {
-      currentDrilldownView = view;
-      updateDrilldownChartUI();
-      renderDrilldownChart();
-    }
-
-    function updateDrilldownChartUI() {
-      if (currentDrilldownView === 'week') {
-        document.getElementById('drillWeekBtn').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-        document.getElementById('drillMonthBtn').className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      } else {
-        document.getElementById('drillMonthBtn').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-        document.getElementById('drillWeekBtn').className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      }
-    }
-
-    function renderDrilldownChart() {
-      if (drilldownChartInstance) drilldownChartInstance.destroy();
-
-      const ctx = document.getElementById('drilldownChartCanvas').getContext('2d');
-      const subjectLogs = logs.filter(l => l.subject === selectedDrilldownSubject);
-      const subColor = getSubjectColor(selectedDrilldownSubject);
-
-      let labels = [];
-      let data = [];
-
-      if (currentDrilldownView === 'week') {
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dateStr = getFormattedDate(d);
-          const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
-          labels.push(dayName);
-
-          const dayMins = subjectLogs.filter(l => l.date === dateStr).reduce((acc, curr) => acc + curr.duration, 0);
-          data.push(dayMins);
-        }
-
-        drilldownChartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Minutes Studied',
-              data: data,
-              backgroundColor: subColor,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: { label: c => ` Time: ${formatTime(c.raw)}` }
-              }
-            },
-            scales: {
-              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-              y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) }, grid: { color: '#334155' } }
-            }
-          }
-        });
-
-      } else {
-        labels = ['Week 1 (1-7)', 'Week 2 (8-14)', 'Week 3 (15-21)', 'Week 4 (22-31)'];
-        data = [0, 0, 0, 0];
-        const now = new Date();
-
-        subjectLogs.forEach(l => {
-          const d = new Date(l.date);
-          if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-            const dateNum = d.getDate();
-            if (dateNum <= 7) data[0] += l.duration;
-            else if (dateNum <= 14) data[1] += l.duration;
-            else if (dateNum <= 21) data[2] += l.duration;
-            else data[3] += l.duration;
-          }
-        });
-
-        drilldownChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Monthly Minutes',
-              data: data,
-              borderColor: subColor,
-              backgroundColor: `${subColor}25`,
-              fill: true,
-              tension: 0.3,
-              pointBackgroundColor: subColor,
-              pointRadius: 4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: { label: c => ` Time: ${formatTime(c.raw)}` }
-              }
-            },
-            scales: {
-              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-              y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) }, grid: { color: '#334155' } }
-            }
-          }
-        });
-      }
-    }
-
-    function renderAll() {
-      updateKPICards();
-      renderLogsList();
-      updateChart();
-      lucide.createIcons();
-    }
-
-    // Direct Boot Sequence
-    renderSubjectDropdown();
-    renderAll();
-    checkActiveSessionTimer();
-    updateUserUI();
-    if (currentProfile) {
-      syncDataWithCloud();
-      startSessionWatcher();
-    }
-  </script>
 </body>
 </html>
