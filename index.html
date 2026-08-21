@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyTracker Pro - Robust Cloud Sync</title>
+  <title>StudyTracker Pro - Single Active Device Session</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -21,6 +21,20 @@
     <span id="syncToastMsg" class="font-medium text-slate-200">Syncing...</span>
   </div>
 
+  <!-- Force Logout Alert Modal -->
+  <div id="forceLogoutModal" class="hidden fixed inset-0 z-[140] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+      <div class="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/40">
+        <i data-lucide="smartphone" class="w-7 h-7"></i>
+      </div>
+      <h3 class="text-lg font-bold text-white">Logged Out From This Device</h3>
+      <p class="text-xs text-slate-300">Aapka account kisi doosre device me login ho gaya hai. Security ke liye is device se logout kiya gaya hai.</p>
+      <button onclick="acknowledgeForceLogout()" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition">
+        Theek Hai (OK)
+      </button>
+    </div>
+  </div>
+
   <!-- Simple Name + Email Login Modal -->
   <div id="authModal" class="hidden fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
@@ -29,7 +43,7 @@
           <i data-lucide="user-check" class="w-6 h-6"></i>
         </div>
         <h3 class="text-lg font-bold text-white">StudyTracker Login</h3>
-        <p class="text-xs text-slate-400">Apna Name aur Email daal kar cloud sync activate karein</p>
+        <p class="text-xs text-slate-400">Apna Name aur Email daal kar session start karein</p>
       </div>
 
       <form id="simpleLoginForm" class="space-y-3">
@@ -45,7 +59,7 @@
         <p id="authErrorMsg" class="hidden text-xs text-rose-400 font-medium"></p>
 
         <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i data-lucide="log-in" class="w-4 h-4"></i> Login & Cloud Sync
+          <i data-lucide="log-in" class="w-4 h-4"></i> Login Here
         </button>
       </form>
 
@@ -55,7 +69,7 @@
     </div>
   </div>
 
-  <!-- Add Subject Custom Modal -->
+  <!-- Add Subject Modal -->
   <div id="addSubjectModal" class="hidden fixed inset-0 z-[130] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -188,7 +202,7 @@
         </div>
         <div>
           <h1 class="text-xl font-bold tracking-tight">StudyTracker Pro</h1>
-          <p class="text-xs text-slate-400">Live Study Logger with Cloud Sync</p>
+          <p class="text-xs text-slate-400">Anti-Cheat Single Device Tracker</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -456,9 +470,6 @@
   </main>
 
   <script>
-    // ==========================================
-    // 1. SUPABASE CLIENT
-    // ==========================================
     const SUPABASE_PROJECT_URL = "https://yffohnbxwurnaajanvuc.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZm9obmJ4d3VybmFhamFudnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMjQ0MjIsImV4cCI6MjEwMjkwMDQyMn0.RcOjYyuf2Ip_giYl6ppcMi-SS76WwS4lnQSWyVJ8fv0";
     
@@ -468,7 +479,7 @@
         supabaseClient = window.supabase.createClient(SUPABASE_PROJECT_URL, SUPABASE_ANON_KEY);
       }
     } catch(err) {
-      console.warn("Supabase bypass:", err);
+      console.warn("Supabase initialization bypassed:", err);
     }
 
     const initialDefaultSubjects = [
@@ -514,6 +525,13 @@
       currentProfile = null;
     }
 
+    // Local device session ID
+    let currentSessionToken = localStorage.getItem('study_device_session_token');
+    if (!currentSessionToken) {
+      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('study_device_session_token', currentSessionToken);
+    }
+
     let dailyTargetMins = parseInt(localStorage.getItem('daily_target_mins')) || 360;
     let targetPromptShownForToday = localStorage.getItem('target_prompt_date') === getTodayDateString();
 
@@ -526,6 +544,7 @@
     let currentDrilldownView = 'week';
     let timerInterval = null;
     let alarmAudioInterval = null;
+    let sessionWatcherInterval = null;
     let audioCtx = null;
 
     const PALETTE_COLORS = [
@@ -663,7 +682,7 @@
     }
 
     // ==========================================
-    // 3. SEAMLESS TWO-WAY SYNC & AUTH
+    // 3. SINGLE ACTIVE DEVICE SESSION ENGINE
     // ==========================================
     function updateUserUI() {
       const tag = document.getElementById('userNameTag');
@@ -680,9 +699,7 @@
     function openAuthModal() {
       if (currentProfile) {
         if (confirm(`Aap currently "${currentProfile.name}" (${currentProfile.email}) ke roop me logged in hain. Logout karna chahte hain?`)) {
-          currentProfile = null;
-          localStorage.removeItem('study_user_profile');
-          updateUserUI();
+          performLogout();
           showToast("Logged out successfully");
         }
         return;
@@ -698,6 +715,52 @@
       document.getElementById('authModal').classList.add('hidden');
     }
 
+    function performLogout() {
+      currentProfile = null;
+      localStorage.removeItem('study_user_profile');
+      if (sessionWatcherInterval) {
+        clearInterval(sessionWatcherInterval);
+        sessionWatcherInterval = null;
+      }
+      updateUserUI();
+    }
+
+    function triggerForceLogoutUI() {
+      performLogout();
+      document.getElementById('forceLogoutModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function acknowledgeForceLogout() {
+      document.getElementById('forceLogoutModal').classList.add('hidden');
+      location.reload();
+    }
+
+    // Heartbeat watcher: Checks if another device claimed the session
+    function startSessionWatcher() {
+      if (sessionWatcherInterval) clearInterval(sessionWatcherInterval);
+      if (!supabaseClient || !currentProfile) return;
+
+      sessionWatcherInterval = setInterval(async () => {
+        if (!currentProfile) return;
+        try {
+          const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('current_session_id')
+            .eq('email', currentProfile.email)
+            .maybeSingle();
+
+          if (!error && data && data.current_session_id) {
+            if (data.current_session_id !== currentSessionToken) {
+              triggerForceLogoutUI();
+            }
+          }
+        } catch (e) {
+          console.warn("Session check bypass:", e);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
     document.getElementById('simpleLoginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const nameInput = document.getElementById('loginNameInput').value.trim();
@@ -705,6 +768,10 @@
       const errorMsg = document.getElementById('authErrorMsg');
 
       if (!emailInput || !nameInput) return;
+
+      // Generate fresh session token for this device
+      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('study_device_session_token', currentSessionToken);
 
       if (!supabaseClient) {
         currentProfile = { name: nameInput, email: emailInput };
@@ -716,7 +783,7 @@
       }
 
       try {
-        // 1. Fetch or create profile using UPSERT
+        // 1. Fetch or create profile using UPSERT with current_session_id
         const { data: existingUser, error: fetchErr } = await supabaseClient
           .from('profiles')
           .select('*')
@@ -727,31 +794,36 @@
 
         if (existingUser) {
           if (existingUser.name.trim().toLowerCase() !== nameInput.toLowerCase()) {
-            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya sahi naam enter karein.`;
+            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya wahi naam enter karein.`;
             errorMsg.classList.remove('hidden');
             return;
           }
-        } else {
-          // Register in profiles
-          const { error: insertErr } = await supabaseClient
-            .from('profiles')
-            .upsert([{ email: emailInput, name: nameInput }]);
-
-          if (insertErr) throw insertErr;
         }
+
+        // Claim session for this device
+        const { error: upsertErr } = await supabaseClient
+          .from('profiles')
+          .upsert([{ 
+            email: emailInput, 
+            name: nameInput,
+            current_session_id: currentSessionToken 
+          }]);
+
+        if (upsertErr) throw upsertErr;
 
         currentProfile = { name: nameInput, email: emailInput };
         localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
         closeAuthModal();
         updateUserUI();
-        showToast(`Welcome back, ${nameInput}! Syncing data...`);
+        showToast(`Welcome, ${nameInput}! Active on this device 📱`);
 
-        // 2. Perform Full Bidirectional Sync
+        // 2. Perform Full Bidirectional Sync & start single session watcher
         await syncDataWithCloud();
+        startSessionWatcher();
 
       } catch (err) {
         console.error("Login Auth Error:", err);
-        errorMsg.innerText = "Error: " + (err.message || err.error_description || "Database connect nahi hua");
+        errorMsg.innerText = "Error: " + (err.message || "Database connection error");
         errorMsg.classList.remove('hidden');
       }
     });
@@ -760,7 +832,7 @@
       if (!supabaseClient || !currentProfile) return;
 
       try {
-        // A. Fetch existing Cloud Logs
+        // A. Fetch Cloud Logs
         const { data: cloudLogs, error: logErr } = await supabaseClient
           .from('study_logs')
           .select('*')
@@ -768,7 +840,7 @@
 
         if (logErr) throw logErr;
 
-        // B. Upload any local logs missing from Cloud
+        // B. Upload local logs that are missing on Cloud
         const cloudIds = new Set((cloudLogs || []).map(l => l.id));
         const localLogsToUpload = logs.filter(l => !cloudIds.has(l.id));
 
@@ -787,7 +859,7 @@
           await supabaseClient.from('study_logs').upsert(payload);
         }
 
-        // C. Combine Cloud logs to local
+        // C. Combine & Refresh local logs
         const { data: refreshedLogs } = await supabaseClient
           .from('study_logs')
           .select('*')
@@ -860,7 +932,7 @@
         showToast("Session saved to Cloud ☁️");
       } catch (err) {
         console.error("Cloud log save error:", err);
-        showToast("Saved Locally (Cloud sync pending)", false);
+        showToast("Saved Locally", false);
       }
     }
 
@@ -1550,7 +1622,10 @@
     renderAll();
     checkActiveSessionTimer();
     updateUserUI();
-    if (currentProfile) syncDataWithCloud();
+    if (currentProfile) {
+      syncDataWithCloud();
+      startSessionWatcher();
+    }
   </script>
 </body>
 </html>
