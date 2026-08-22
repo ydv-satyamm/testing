@@ -1,4 +1,4 @@
-// sw.js - Morning Alarm (6 AM), Static GK (1:45 Interval), Universal Festivals & Backend Lock-Screen Push with Action Buttons
+// sw.js - Morning Alarm (6 AM), Static GK (105 Mins), Lock Screen Live Tracker & Stop Action
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -8,25 +8,39 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Helper: Standard Action-Button Notification Payload
-function createSessionNotificationOptions(bodyText) {
-  return {
-    body: bodyText,
+// Helper 1: Lock Screen Par Live Running Study Session Dikhana (Silent Mode)
+function showLiveTrackingNotification(data) {
+  const { topic, subject, endTimeStr, duration } = data;
+  return self.registration.showNotification(`📖 Studying: ${subject}`, {
+    body: `🎯 ${topic}\n⏳ Duration: ${duration} Mins | Ends at: ${endTimeStr}`,
+    icon: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
+    tag: 'study-active-session-tracker',
+    silent: true,
+    requireInteraction: true,
+    renotify: false
+  });
+}
+
+// Helper 2: Timer Khatam Hone Par Loud Alarm + Stop Button Dikhana
+function showSessionCompleteNotification(title, body) {
+  return self.registration.showNotification(title, {
+    body: body,
     icon: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
     badge: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
     vibrate: [800, 400, 800, 400, 800],
-    tag: 'study-timer-complete',
+    tag: 'study-active-session-tracker', // Purani tracking notification ko replace kar dega
     renotify: true,
     requireInteraction: true,
     actions: [
       { action: 'stop_alarm_action', title: '🛑 Stop Alarm / Close' },
       { action: 'open_app_action', title: '📱 Open App' }
     ]
-  };
+  });
 }
 
 // =========================================================================
-// 1. BACKEND WEB PUSH NOTIFICATION (Phone lock hone par ye trigger karega)
+// 1. BACKEND WEB PUSH NOTIFICATION (Phone Locked Hone Par Backend Trigger)
 // =========================================================================
 self.addEventListener('push', (event) => {
   let payload = {
@@ -43,10 +57,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(
-      payload.title,
-      createSessionNotificationOptions(payload.body)
-    )
+    showSessionCompleteNotification(payload.title, payload.body)
   );
 });
 
@@ -66,7 +77,7 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Normal notification body click ya "Open App" action
+  // Normal notification click ya "Open App" par app open karein
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
@@ -81,21 +92,34 @@ self.addEventListener('notificationclick', (event) => {
 // 3. FOREGROUND CLIENT MESSAGE LISTENER
 // =========================================================================
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'TRIGGER_SESSION_NOTIFICATION') {
-    const { title, body } = event.data;
-    self.registration.showNotification(
-      title,
-      createSessionNotificationOptions(body)
-    );
+  if (!event.data) return;
+
+  // Live Timer Tracker Start
+  if (event.data.type === 'START_LIVE_TRACKER') {
+    showLiveTrackingNotification(event.data);
   }
 
-  if (event.data && event.data.type === 'SCHEDULE_MORNING_ALARM') {
+  // Live Tracker Clear (Session cancel ya finish hone par)
+  if (event.data.type === 'CLEAR_LIVE_TRACKER') {
+    self.registration.getNotifications({ tag: 'study-active-session-tracker' }).then((notifications) => {
+      notifications.forEach((n) => n.close());
+    });
+  }
+
+  // Session Complete Alarm Notification
+  if (event.data.type === 'TRIGGER_SESSION_NOTIFICATION') {
+    const { title, body } = event.data;
+    showSessionCompleteNotification(title, body);
+  }
+
+  // Morning Alarm Setup
+  if (event.data.type === 'SCHEDULE_MORNING_ALARM') {
     setupBackgroundCrons();
   }
 });
 
 // =========================================================================
-// 4. BACKGROUND TIMERS & STATIC GK / FESTIVALS MATRIX
+// 4. BACKGROUND TIMERS (6 AM ALARM & 105 MIN STATIC GK / FESTIVALS)
 // =========================================================================
 function setupBackgroundCrons() {
   // 1. Morning Alarm Cron (6:00 AM Daily)
@@ -138,7 +162,6 @@ function triggerBackgroundStaticGKAndFestivals() {
     "2026-10-20": { title: "🏹 Vijayadashami (Dussehra)", body: "Dussehra ki shubhkamnayein! Burai par achhai ki jeet ho." },
     "2026-11-8": { title: "🪔 Deepawali (Diwali)", body: "Deepawali ki hardik shubhkamnayein! Gyan aur roshni ka deep jalta rahe." },
     "2026-11-10": { title: "🎇 Bhai Dooj", body: "Bhai Dooj ki hardik shubhkamnayein!" },
-    // 2027 Major Dates
     "2027-3-6": { title: "✨ Maha Shivratri 🔱", body: "Mahashivratri ki hardik shubhkamnayein! Har har Mahadev!" },
     "2027-3-22": { title: "🎨 Holi Festival of Colors 🌸", body: "Holi ki hardik shubhkamnayein!" },
     "2027-8-31": { title: "🦚 Shri Krishna Janmashtami", body: "Janmashtami ki shubhkamnayein!" },
@@ -232,8 +255,8 @@ function triggerBackgroundStaticGKAndFestivals() {
     "7-26": { title: "26 July — कारगिल विजय दिवस", body: "Kargil Vijay Day." },
     "7-28": { title: "28 July — विश्व हेपेटाइटिस दिवस / प्रकृति संरक्षण दिवस", body: "Hepatitis & Nature Conservation Day." },
     "7-29": { title: "29 July — अंतर्राष्ट्रीय बाघ दिवस", body: "International Tiger Day." },
-    "8-6": { title: "6 August — हिरोशिma दिवस", body: "Hiroshima Day." },
-    "8-7": { title: "7 August — राष्ट्रीय हथकरघा दिवस / जेवलिन दिवस", body: "Handloom & Javelin Throw Day." },
+    "8-6": { title: "6 August — हिरोशिमा दिवस", body: "Hiroshima Day." },
+    "8-7": { title: "7 August — राष्ट्रीय हथकरघा दिवस / जेवलin दिवस", body: "Handloom & Javelin Throw Day." },
     "8-9": { title: "9 August — नागासाकी दिवस", body: "Nagasaki Day." },
     "8-12": { title: "12 August — अंतर्राष्ट्रीय युवा दिवस / हाथी दिवस", body: "International Youth Day & World Elephant Day." },
     "8-13": { title: "13 August — विश्व अंगदान दिवस", body: "World Organ Donation Day." },
@@ -278,9 +301,7 @@ function triggerBackgroundStaticGKAndFestivals() {
     "12-26": { title: "26 December — वीर बाल दिवस", body: "Veer Baal Diwas." }
   };
 
-  // Check Festival first, then Static GK
   let activeEvent = majorFestivals[fullDateKey] || staticGKDays[dateKey];
-
   if (activeEvent) {
     self.registration.showNotification(`🎉 ${activeEvent.title}`, {
       body: activeEvent.body,
