@@ -1,4 +1,4 @@
-// sw.js - Morning Alarm (6 AM), Static GK (1:45 Interval), Universal Festivals & Backend Lock-Screen Push
+// sw.js - Morning Alarm (6 AM), Static GK (1:45 Interval), Universal Festivals & Backend Lock-Screen Push with Action Buttons
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -7,6 +7,23 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
+
+// Helper: Standard Action-Button Notification Payload
+function createSessionNotificationOptions(bodyText) {
+  return {
+    body: bodyText,
+    icon: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
+    vibrate: [800, 400, 800, 400, 800],
+    tag: 'study-timer-complete',
+    renotify: true,
+    requireInteraction: true,
+    actions: [
+      { action: 'stop_alarm_action', title: '🛑 Stop Alarm / Close' },
+      { action: 'open_app_action', title: '📱 Open App' }
+    ]
+  };
+}
 
 // =========================================================================
 // 1. BACKEND WEB PUSH NOTIFICATION (Phone lock hone par ye trigger karega)
@@ -25,26 +42,31 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const options = {
-    body: payload.body,
-    icon: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
-    badge: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
-    vibrate: [800, 400, 800, 400, 800],
-    tag: 'study-timer-complete',
-    renotify: true,
-    requireInteraction: true
-  };
-
   event.waitUntil(
-    self.registration.showNotification(payload.title, options)
+    self.registration.showNotification(
+      payload.title,
+      createSessionNotificationOptions(payload.body)
+    )
   );
 });
 
 // =========================================================================
-// 2. NOTIFICATION CLICK HANDLER
+// 2. NOTIFICATION CLICK & ACTION BUTTON HANDLER
 // =========================================================================
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  // Agar user ne "Stop Alarm / Close" button click kiya
+  if (event.action === 'stop_alarm_action') {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      clientList.forEach((client) => {
+        client.postMessage({ type: 'STOP_ALARM_FROM_NOTIFICATION' });
+      });
+    });
+    return;
+  }
+
+  // Normal notification body click ya "Open App" action
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
@@ -61,15 +83,10 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'TRIGGER_SESSION_NOTIFICATION') {
     const { title, body } = event.data;
-    self.registration.showNotification(title, {
-      body: body,
-      icon: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
-      badge: 'https://cdn-icons-png.flaticon.com/512/3281/3281329.png',
-      vibrate: [500, 250, 500, 250, 500],
-      tag: 'study-timer-complete',
-      renotify: true,
-      requireInteraction: true
-    });
+    self.registration.showNotification(
+      title,
+      createSessionNotificationOptions(body)
+    );
   }
 
   if (event.data && event.data.type === 'SCHEDULE_MORNING_ALARM') {
@@ -215,7 +232,7 @@ function triggerBackgroundStaticGKAndFestivals() {
     "7-26": { title: "26 July — कारगिल विजय दिवस", body: "Kargil Vijay Day." },
     "7-28": { title: "28 July — विश्व हेपेटाइटिस दिवस / प्रकृति संरक्षण दिवस", body: "Hepatitis & Nature Conservation Day." },
     "7-29": { title: "29 July — अंतर्राष्ट्रीय बाघ दिवस", body: "International Tiger Day." },
-    "8-6": { title: "6 August — हिरोशिमा दिवस", body: "Hiroshima Day." },
+    "8-6": { title: "6 August — हिरोशिma दिवस", body: "Hiroshima Day." },
     "8-7": { title: "7 August — राष्ट्रीय हथकरघा दिवस / जेवलिन दिवस", body: "Handloom & Javelin Throw Day." },
     "8-9": { title: "9 August — नागासाकी दिवस", body: "Nagasaki Day." },
     "8-12": { title: "12 August — अंतर्राष्ट्रीय युवा दिवस / हाथी दिवस", body: "International Youth Day & World Elephant Day." },
