@@ -513,7 +513,7 @@
       console.warn("Supabase bypass:", err);
     }
 
-    // Register Background Service Worker
+    // Register Background Service Worker with 6 AM Alarm & Lock Screen Stop Action
     let swRegistration = null;
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then((reg) => {
@@ -527,6 +527,14 @@
         }
       }).catch((err) => {
         console.warn("Service Worker registration bypassed:", err);
+      });
+
+      // 🔔 Lock Screen / Notification Panel ke "Stop Alarm" button ka listener
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'STOP_ALARM_FROM_NOTIFICATION') {
+          stopAlarm();
+          showToast("🛑 Alarm stopped from Notification!");
+        }
       });
     }
 
@@ -544,10 +552,8 @@
         lucide.createIcons();
       }
       
-      // Trigger Static GK & Special Day notification on every website open
       checkStaticGKAndSpecialDays(true);
       
-      // Setup 1:45 Hours (105 minutes) recurring notification interval
       setInterval(() => {
         checkStaticGKAndSpecialDays(false);
       }, 105 * 60 * 1000);
@@ -757,9 +763,9 @@
       }
     }
 
-    // =========================================================================
-    // BACKEND WEB PUSH NOTIFICATION HELPERS (FOR LOCKED PHONES)
-    // =========================================================================
+    // ==========================================
+    // BACKEND WEB PUSH NOTIFICATION HELPERS
+    // ==========================================
     async function scheduleBackendNotification(topic, durationMins, endTimeISO) {
       if (!supabaseClient || !currentProfile) return;
       try {
@@ -1305,15 +1311,32 @@
         activeSession.isPaused = true;
         activeSession.remainingMs = remaining;
         localStorage.setItem('active_study_session', JSON.stringify(activeSession));
+        
         clearPendingBackendNotifications();
+        if (swRegistration && swRegistration.active) {
+          swRegistration.active.postMessage({ type: 'CLEAR_LIVE_TRACKER' });
+        }
+        
         checkActiveSessionTimer();
       } else {
         const now = new Date().getTime();
         activeSession.isPaused = false;
         activeSession.endTimestamp = now + (activeSession.remainingMs || 0);
         localStorage.setItem('active_study_session', JSON.stringify(activeSession));
+        
         const newEndTime = new Date(activeSession.endTimestamp);
         scheduleBackendNotification(activeSession.topic, activeSession.duration, newEndTime.toISOString());
+        
+        if (swRegistration && swRegistration.active) {
+          swRegistration.active.postMessage({
+            type: 'START_LIVE_TRACKER',
+            subject: activeSession.subject,
+            topic: activeSession.topic,
+            duration: activeSession.duration,
+            endTimeStr: formatTime12Hour(newEndTime)
+          });
+        }
+        
         checkActiveSessionTimer();
       }
     }
@@ -1440,7 +1463,13 @@
     function abandonActiveSession() {
       if (confirm("Kya aap session beech me chhodna chahte hain?")) {
         if (timerInterval) clearInterval(timerInterval);
+        
         clearPendingBackendNotifications();
+
+        if (swRegistration && swRegistration.active) {
+          swRegistration.active.postMessage({ type: 'CLEAR_LIVE_TRACKER' });
+        }
+
         localStorage.removeItem('active_study_session');
         activeSession = null;
         checkActiveSessionTimer();
@@ -1487,7 +1516,18 @@
 
       localStorage.setItem('active_study_session', JSON.stringify(activeSession));
 
-      // Backend ko exact alert time schedule karo (Lock screen notification ke liye)
+      // 🔔 Lock Screen Par Live Silent Tracker Bhejna
+      if (swRegistration && swRegistration.active) {
+        swRegistration.active.postMessage({
+          type: 'START_LIVE_TRACKER',
+          subject: subject,
+          topic: topic,
+          duration: durationMinutes,
+          endTimeStr: formatTime12Hour(endTimeObj)
+        });
+      }
+
+      // Backend Database Scheduler Entry
       scheduleBackendNotification(topic, durationMinutes, endTimeObj.toISOString());
 
       document.getElementById('topicInput').value = '';
@@ -1750,24 +1790,52 @@
     }
 
     // ==========================================
-    // 5. COLORFUL PDF EXPORT ENGINE
+    // 5. MONDAY-SUNDAY WEEKLY PDF EXPORT ENGINE
     // ==========================================
+    function getMonday(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    }
+
+    function groupLogsByMondaySundayWeeks(allLogs) {
+      const sorted = [...allLogs].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const weeksMap = {};
+
+      sorted.forEach(log => {
+        const logDate = new Date(log.date);
+        const mon = getMonday(logDate);
+        const sun = new Date(mon);
+        sun.setDate(mon.getDate() + 6);
+
+        const weekKey = `${getFormattedDate(mon)}_${getFormattedDate(sun)}`;
+        if (!weeksMap[weekKey]) {
+          weeksMap[weekKey] = {
+            startDate: getFormattedDate(mon),
+            endDate: getFormattedDate(sun),
+            logs: []
+          };
+        }
+        weeksMap[weekKey].logs.push(log);
+      });
+
+      return Object.values(weeksMap);
+    }
+
     function exportColorfulPDF(type) {
       try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        const targetLogs = getFilteredLogs(type);
-        if (targetLogs.length === 0) {
-          alert(`Export karne ke liye ${type === 'today' ? 'aaj' : 'is hafte'} ka koi study log available nahi hai!`);
+
+        const baseLogs = (type === 'today') ? getFilteredLogs('today') : logs;
+        if (!baseLogs || baseLogs.length === 0) {
+          alert(`Export karne ke liye koi study log available nahi hai!`);
           return;
         }
 
-        const totalMins = targetLogs.reduce((acc, curr) => acc + curr.duration, 0);
         const userName = currentProfile ? currentProfile.name : "Satyam Yadav";
-        const titleText = type === 'today' ? "Daily Study Progress Report" : "Weekly Study Performance Report";
         const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-
         const primaryColor = [79, 70, 229]; // Indigo
         const darkBg = [15, 23, 42];        // Slate 900
 
@@ -1779,114 +1847,227 @@
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 42, 210, 3, 'F');
 
-        // Header Titles
+        // Main Header Titles
         doc.setTextColor(255, 255, 255);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(18);
         doc.text("StudyTracker Pro Report", 14, 18);
 
-        doc.setFontSize(10);
+        doc.setFontSize(12.5);
         doc.setTextColor(148, 163, 184);
-        doc.text(`Generated for: ${userName} | Date: ${dateStr}`, 14, 27);
-        
-        // Admin & Telegram Link (Font size 14 for telegram link)
-        doc.text("Admin: Satyam Bhaiya", 14, 34);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(14);
+        doc.text(`Student: ${userName} | Date: ${dateStr}`, 14, 27);
+
+        doc.setFontSize(12.5);
+        doc.text("Admin: Satyam Bhaiya", 14, 35);
         doc.setTextColor(59, 130, 246);
-        doc.text("https://telegram.me/stymmmmmmm", 75, 34);
+        doc.text("https://telegram.me/stymmmmmmm", 75, 35);
 
-        // Report Title Badge
-        doc.setFontSize(14);
-        doc.setTextColor(79, 70, 229);
-        doc.text(titleText.toUpperCase(), 14, 56);
+        let startY = 54;
 
-        // Summary Card Box
-        doc.setFillColor(248, 250, 252);
-        doc.roundedRect(14, 62, 182, 22, 3, 3, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.roundedRect(14, 62, 182, 22, 3, 3, 'S');
+        if (type === 'today') {
+          // ================= SINGLE DAY EXPORT =================
+          const totalMins = baseLogs.reduce((a, b) => a + b.duration, 0);
 
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text("Total Duration Studied:", 20, 75);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(15, 23, 42);
-        doc.text(formatTime(totalMins), 65, 76);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text("Total Completed Topics:", 120, 75);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(16, 185, 129);
-        doc.text(`${targetLogs.length} Topics`, 165, 76);
-
-        // Table Headers
-        let startY = 94;
-        doc.setFillColor(79, 70, 229);
-        doc.rect(14, startY, 182, 10, 'F');
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text("Subject", 18, startY + 7);
-        doc.text("Topic / Chapter Goal", 65, startY + 7);
-        doc.text("Duration", 145, startY + 7);
-        doc.text("Date", 175, startY + 7);
-
-        startY += 10;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-
-        targetLogs.forEach((log, index) => {
-          if (startY > 275) {
-            doc.addPage();
-            startY = 20;
-          }
-
-          if (index % 2 === 0) {
-            doc.setFillColor(241, 245, 249);
-            doc.rect(14, startY, 182, 10, 'F');
-          }
-
-          doc.setTextColor(15, 23, 42);
-          doc.setFont("helvetica", "bold");
-          doc.text(doc.splitTextToSize(log.subject, 44), 18, startY + 6);
-
-          doc.setFont("helvetica", "normal");
-          doc.text(doc.splitTextToSize(log.topic, 75), 65, startY + 6);
-
+          doc.setFontSize(14);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(79, 70, 229);
-          doc.text(formatTime(log.duration), 145, startY + 6);
+          doc.text("DAILY PERFORMANCE REPORT", 14, startY);
+          startY += 8;
 
+          doc.setFillColor(248, 250, 252);
+          doc.roundedRect(14, startY, 182, 18, 3, 3, 'F');
+          doc.setDrawColor(226, 232, 240);
+          doc.roundedRect(14, startY, 182, 18, 3, 3, 'S');
+
+          doc.setFontSize(12.5);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(100, 116, 139);
-          doc.text(log.date, 175, startY + 6);
+          doc.text(`Total Time: ${formatTime(totalMins)}`, 20, startY + 12);
+          doc.text(`Sessions: ${baseLogs.length}`, 120, startY + 12);
+          startY += 24;
 
-          startY += 11;
-        });
+          startY = renderLogsTable(doc, baseLogs, startY);
+          renderWeekConclusion(doc, baseLogs, "TODAY");
 
-        // Footer
+        } else {
+          // ================= MULTI-WEEK (MON-SUN) EXPORT =================
+          const weeklyGroups = groupLogsByMondaySundayWeeks(baseLogs);
+
+          weeklyGroups.forEach((weekObj, wIndex) => {
+            const weekNumber = wIndex + 1;
+            const weekTotalMins = weekObj.logs.reduce((a, b) => a + b.duration, 0);
+
+            if (wIndex > 0) {
+              doc.addPage();
+              startY = 20;
+            }
+
+            // WEEK BANNER
+            doc.setFillColor(79, 70, 229);
+            doc.roundedRect(14, startY, 182, 12, 2, 2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12.5);
+            doc.text(`WEEK ${weekNumber} (${weekObj.startDate} to ${weekObj.endDate})`, 18, startY + 8);
+            doc.text(`Total: ${formatTime(weekTotalMins)}`, 145, startY + 8);
+
+            startY += 17;
+
+            // 1. Detailed Logs Table for this week
+            renderLogsTable(doc, weekObj.logs, startY);
+
+            // 2. Conclusion for this week on a fresh new page
+            renderWeekConclusion(doc, weekObj.logs, `WEEK ${weekNumber} (${weekObj.startDate} to ${weekObj.endDate})`);
+          });
+        }
+
+        // Page Numbering Footer
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
-          doc.setFontSize(8);
+          doc.setFontSize(10);
           doc.setTextColor(148, 163, 184);
           doc.text(`StudyTracker Pro - Page ${i} of ${pageCount}`, 14, 290);
-          doc.text("Keep pushing your limits! 🚀", 160, 290);
+          doc.text("Keep pushing your limits! 🚀", 145, 290);
         }
 
         const fileName = `StudyReport_${type.toUpperCase()}_${getTodayDateString()}.pdf`;
         doc.save(fileName);
-        showToast("📥 Colorful PDF Downloaded Successfully!");
+        showToast("📥 Multi-Week PDF Downloaded Successfully!");
+
       } catch (err) {
         console.error("PDF Export Error:", err);
         alert("PDF export me error aayi hai. Console check karein.");
       }
+    }
+
+    function renderLogsTable(doc, logsList, startY) {
+      doc.setFillColor(15, 23, 42);
+      doc.rect(14, startY, 182, 8, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Subject", 18, startY + 5.5);
+      doc.text("Topic / Chapter Goal", 65, startY + 5.5);
+      doc.text("Duration", 140, startY + 5.5);
+      doc.text("Date", 172, startY + 5.5);
+
+      startY += 8;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12.5);
+
+      logsList.forEach((log, index) => {
+        if (startY > 265) {
+          doc.addPage();
+          startY = 20;
+        }
+
+        if (index % 2 === 0) {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(14, startY, 182, 9.5, 'F');
+        }
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFont("helvetica", "bold");
+        doc.text(doc.splitTextToSize(log.subject || "General", 44), 18, startY + 6.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(doc.splitTextToSize(log.topic || "--", 70), 65, startY + 6.5);
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(79, 70, 229);
+        doc.text(formatTime(log.duration), 140, startY + 6.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(log.date || "", 172, startY + 6.5);
+
+        startY += 9.5;
+      });
+
+      return startY;
+    }
+
+    function renderWeekConclusion(doc, logsList, weekLabel) {
+      // Direct New Page for Conclusion Section
+      doc.addPage();
+      let startY = 24;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(79, 70, 229);
+      doc.text(`${weekLabel} - CONCLUSION & SUBJECT BREAKDOWN`, 14, startY);
+      startY += 8;
+
+      const subjectSummary = {};
+      logsList.forEach(log => {
+        const sub = log.subject || "General";
+        if (!subjectSummary[sub]) {
+          subjectSummary[sub] = {
+            totalMins: 0,
+            count: 0,
+            topics: []
+          };
+        }
+        subjectSummary[sub].totalMins += log.duration;
+        subjectSummary[sub].count += 1;
+        if (log.topic && !subjectSummary[sub].topics.includes(log.topic)) {
+          subjectSummary[sub].topics.push(log.topic);
+        }
+      });
+
+      // Header Bar for Conclusion Table
+      doc.setFillColor(15, 23, 42);
+      doc.rect(14, startY, 182, 9, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Subject Name", 18, startY + 6);
+      doc.text("Total Time & Frequency", 70, startY + 6);
+      doc.text("Covered Chapters / Topics", 125, startY + 6);
+
+      startY += 9;
+
+      Object.keys(subjectSummary).forEach((subName, sIdx) => {
+        const item = subjectSummary[subName];
+        const safeTopics = item.topics.map(t => `- ${t}`).join("\n");
+        const splitTopics = doc.splitTextToSize(safeTopics, 65);
+        const rowHeight = Math.max(14, splitTopics.length * 5 + 6);
+
+        if (startY + rowHeight > 270) {
+          doc.addPage();
+          startY = 20;
+        }
+
+        if (sIdx % 2 === 0) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(14, startY, 182, rowHeight, 'F');
+        }
+
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(14, startY, 182, rowHeight, 'S');
+
+        doc.setTextColor(15, 23, 42);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12.5);
+        doc.text(subName, 18, startY + 7);
+
+        doc.setTextColor(79, 70, 229);
+        doc.text(`${formatTime(item.totalMins)}`, 70, startY + 7);
+        doc.setTextColor(100, 116, 139);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text(`(${item.count} baar padha gaya)`, 70, startY + 13);
+
+        doc.setTextColor(51, 65, 85);
+        doc.setFontSize(12.5);
+        doc.text(splitTopics, 125, startY + 7);
+
+        startY += rowHeight;
+      });
+
+      return startY;
     }
 
     function openSubjectDrilldownModal(subjectName) {
