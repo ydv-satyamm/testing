@@ -1,2260 +1,1126 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyTracker Pro - Static GK & Special Reminders</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- jsPDF Library for Colorful PDF Export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Weekly Routine Planner - Complete Auto Schedule Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    :root {
+      --primary: #2563eb;
+      --bg: #f1f5f9;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 24px 16px 80px;
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    /* Top App Header */
+    .app-header {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8f0;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .app-header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .day-pills-banner {
+      display: inline-flex;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .day-tag {
+      font-weight: 800;
+      font-size: 13px;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    .btn-outline {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+    }
+    .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+
+    /* Setup Columns Grid */
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .planner-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 1024px) {
+      .planner-grid { grid-template-columns: 1fr; }
+    }
+
+    .column-wrapper {
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .column-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .column-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    /* Task Card */
+    .task-card {
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      border-top: 5px solid #2563eb;
+      padding: 16px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.04);
+      position: relative;
+    }
+
+    .task-card.completed {
+      background-color: #fcfdfe;
+      border-color: #22c55e;
+      border-top-color: #22c55e !important;
+    }
+
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .week-chip {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .task-card.completed .status-pill {
+      background: #ecfdf5;
+      color: #15803d;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 7px 10px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: #0f172a;
+      outline: none;
+      background: #fff;
+    }
+
+    input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
+      background: none;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+
+    .subject-preview {
+      font-weight: 700;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      flex-grow: 1;
+      text-align: center;
+      background: #f8fafc;
+    }
+
+    /* Independent Day Toggle Buttons */
+    .days-badge-container {
+      display: flex;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .day-toggle-btn {
+      flex: 1;
+      height: 32px;
+      border-radius: 6px;
+      border: 1.5px solid #cbd5e1;
+      background: #ffffff;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .day-toggle-btn:hover {
+      border-color: #94a3b8;
+      background: #f1f5f9;
+    }
+
+    .day-toggle-btn.active {
+      color: #ffffff !important;
+      border-color: transparent !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    }
+
+    .calc-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .card-actions {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-auto-all {
+      width: 100%;
+      background: #10b981;
+      color: #fff;
+      padding: 11px 14px;
+      font-size: 13.5px;
+      font-weight: 800;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 3px 8px rgba(16, 185, 129, 0.25);
+      transition: all 0.2s;
+    }
+    .btn-auto-all:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .btn-step-action {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      padding: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-delete-card {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .btn-delete-card:hover { color: #ef4444; }
+
+    /* ================================================= */
+    /* FULL WEEKLY OUTPUT SHEETS */
+    /* ================================================= */
+    .output-section {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f1f5f9;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .all-weeks-container {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .weekly-sheet-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+      border-radius: 6px;
+      overflow: hidden;
+      page-break-after: always;
+    }
+
+    .sheet-status-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 20px;
+      font-weight: 800;
+      font-size: 14.5px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .sheet-status-bar .week-tag {
+      color: #1e3a8a;
+    }
+
+    .sheet-status-bar .status-tag {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .sheet-status-bar .status-incomplete {
+      color: #dc2626;
+      background: #fee2e2;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .sheet-status-bar .status-complete {
+      color: #15803d;
+      background: #dcfce7;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    .routine-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .routine-table th {
+      background-color: #e2edff;
+      color: #1e293b;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 12px 10px;
+      border-bottom: 3px solid #cbd5e1;
+      border-right: 1px solid #cbd5e1;
+    }
+
+    .routine-table th:last-child { border-right: none; }
+
+    .routine-table td {
+      padding: 11px 12px;
+      font-size: 13.5px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+
+    .routine-table td:last-child { border-right: none; }
+
+    .routine-table td.date-col {
+      text-align: left;
+      padding-left: 18px;
+      font-weight: 600;
+      color: #334155;
+      width: 25%;
+      background-color: #fafbfc;
+    }
+
+    .day-tag-circle {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      line-height: 20px;
+      text-align: center;
+      border-radius: 3px;
+      background: #1e3a8a;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      margin-right: 8px;
+    }
+
+    /* Completed cell styling with font color #E7E7E7 as requested */
+    .cell-completed-tag {
+      color: #E7E7E7 !important;
+      font-weight: 800 !important;
+      letter-spacing: 1px;
+      background: #f8fafc;
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* Observations / Backlog Footer Box */
+    .sheet-observations-section {
+      border-top: 1px solid #e2e8f0;
+      background-color: #ffffff;
+      padding: 12px 18px;
+    }
+
+    .sheet-observations-title {
+      text-align: center;
+      font-style: italic;
+      font-weight: 800;
+      color: #1e293b;
+      font-size: 13.5px;
+      margin-bottom: 6px;
+    }
+
+    .sheet-observations-box {
+      width: 100%;
+      min-height: 55px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: #334155;
+      outline: none;
+      background: #fff;
+    }
+
+    @media print {
+      body { padding: 0; background: #fff; }
+      .app-header, .planner-grid, .section-title { display: none !important; }
+      .output-section { border: none; box-shadow: none; padding: 0; }
+      .weekly-sheet-card { border: 1.5px solid #333; margin-bottom: 25px; }
+      .sheet-observations-box { border: 1px solid #666; }
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-16">
+<body>
 
-  <!-- Welcome / Signature Popup Modal -->
-  <div id="welcomeModal" class="hidden fixed inset-0 z-[160] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-900 border-2 border-indigo-500/50 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-5 animate-pulse">
-      <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto border border-indigo-500/40 shadow-lg">
-        <i data-lucide="sparkles" class="w-8 h-8"></i>
-      </div>
-      <div class="space-y-2">
-        <h3 class="text-2xl font-black text-white tracking-wide">Aapka Swagat Hai 🙏</h3>
-        <p class="text-xs text-indigo-300 font-medium">StudyTracker Pro me aapki safalta ki taiyari shuru hoti hai.</p>
-      </div>
-
-      <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 text-center">
-        <span class="text-xs font-bold tracking-wider text-amber-400 block">⚡ Powered by 𓊈 ꕶ𝐚𐍄ꪗ𝓪𝓂 𓊉 🚩</span>
-      </div>
-
-      <button onclick="dismissWelcomeModal()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
-        <i data-lucide="bell-ring" class="w-4 h-4"></i> Aage Badhein & Enable Notifications
-      </button>
-    </div>
-  </div>
-
-  <!-- Status Toast Bar -->
-  <div id="syncToast" class="hidden fixed bottom-4 right-4 z-[150] bg-slate-800 border border-slate-700 text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 transition-all">
-    <span id="syncToastDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-    <span id="syncToastMsg" class="font-medium text-slate-200">Syncing...</span>
-  </div>
-
-  <!-- Force Logout Alert Modal -->
-  <div id="forceLogoutModal" class="hidden fixed inset-0 z-[140] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-rose-500 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
-      <div class="w-14 h-14 bg-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center mx-auto border border-rose-500/40">
-        <i data-lucide="smartphone" class="w-7 h-7"></i>
-      </div>
-      <h3 class="text-lg font-bold text-white">Logged Out From This Device</h3>
-      <p class="text-xs text-slate-300">Aapka account kisi doosre device me login ho gaya hai. Security ke liye is device se logout kiya gaya hai.</p>
-      <button onclick="acknowledgeForceLogout()" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition">
-        Theek Hai (OK)
-      </button>
-    </div>
-  </div>
-
-  <!-- Simple Name + Email Login Modal -->
-  <div id="authModal" class="hidden fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-      <div class="text-center space-y-1">
-        <div class="w-12 h-12 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center mx-auto mb-2">
-          <i data-lucide="user-check" class="w-6 h-6"></i>
-        </div>
-        <h3 class="text-lg font-bold text-white">StudyTracker Login</h3>
-        <p class="text-xs text-slate-400">Apna Name aur Email daal kar session start karein</p>
-      </div>
-
-      <form id="simpleLoginForm" class="space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Aapka Naam (Full Name)</label>
-          <input type="text" id="loginNameInput" required placeholder="e.g. Satyam Yadav" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Email ID</label>
-          <input type="email" id="loginEmailInput" required placeholder="name@example.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
-        </div>
-
-        <p id="authErrorMsg" class="hidden text-xs text-rose-400 font-medium"></p>
-
-        <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
-          <i data-lucide="log-in" class="w-4 h-4"></i> Login Here
-        </button>
-      </form>
-
-      <button type="button" onclick="closeAuthModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-400 rounded-xl">
-        Cancel / Close
-      </button>
-    </div>
-  </div>
-
-  <!-- Add Subject Modal -->
-  <div id="addSubjectModal" class="hidden fixed inset-0 z-[130] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i data-lucide="book-plus" class="w-5 h-5 text-indigo-400"></i> Naya Subject Add Karein
-        </h3>
-        <button onclick="closeAddSubjectModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <form id="addSubjectForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Subject Ka Naam</label>
-          <input type="text" id="newSubjectNameInput" required placeholder="e.g. Economics, Polity, Physics"
-            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
-        </div>
-        <div class="flex gap-2">
-          <button type="button" onclick="closeAddSubjectModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-xl transition">
-            Cancel
-          </button>
-          <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition">
-            Save Subject
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Target Achieved Prompt Modal -->
-  <div id="targetAchievedModal" class="hidden fixed inset-0 z-[110] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-emerald-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-5">
-      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
-        <i data-lucide="trophy" class="w-8 h-8 animate-bounce"></i>
-      </div>
+  <div class="container">
+    <header class="app-header">
       <div>
-        <h3 class="text-2xl font-bold text-white">Shaandaar! Target Pura Hua 🎉</h3>
-        <p class="text-xs text-slate-300 mt-1">Aapne aaj ka <span id="achievedTargetText" class="font-bold text-emerald-400">6 Ghante</span> ka study goal achieve kar liya hai!</p>
-      </div>
-
-      <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/80 text-left space-y-3">
-        <label class="block text-xs font-semibold text-slate-300">Kya aap aaj ka target badhana chahte hain?</label>
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="extendDailyTarget(60)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+1 Ghanta</button>
-          <button onclick="extendDailyTarget(120)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+2 Ghante</button>
-          <button onclick="extendDailyTarget(180)" class="py-2 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition">+3 Ghante</button>
+        <h1>📅 Weekly Routine Planner Setup</h1>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+          <span style="font-size: 12px; font-weight: 700; color: #64748b;">DAYS FORMAT:</span>
+          <div class="day-pills-banner">
+            <span class="day-tag">S</span>
+            <span class="day-tag">M</span>
+            <span class="day-tag">T</span>
+            <span class="day-tag">W</span>
+            <span class="day-tag">T</span>
+            <span class="day-tag">F</span>
+            <span class="day-tag">S</span>
+            <span class="day-tag">S</span>
+          </div>
+          <span style="font-size: 12.5px; color: #059669; font-weight: 700;">⚡ 1-Click se Total Classes (e.g. 100) tak poora schedule ban jayega</span>
         </div>
       </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="resetToInitial()">↺ Reset Setup</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print Full Schedule (All Weeks)</button>
+      </div>
+    </header>
 
-      <div class="flex gap-2">
-        <button onclick="closeTargetModal()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition">
-          Bas Itna Hi Kafi Hai
-        </button>
+    <!-- STEP 1: Inputs Setup for Columns -->
+    <h2 class="section-title">⚙️ Subject Stream Routine Configuration</h2>
+    <div class="planner-grid">
+      <!-- COLUMN 1 -->
+      <div class="column-wrapper" id="col-container-1">
+        <div class="column-header">
+          <div class="column-title"><span style="color:#2563eb;">●</span> Column 1</div>
+          <span class="column-badge" id="col-1-count">1 Step</span>
+        </div>
+        <div id="col-cards-1"></div>
+      </div>
+
+      <!-- COLUMN 2 -->
+      <div class="column-wrapper" id="col-container-2">
+        <div class="column-header">
+          <div class="column-title"><span style="color:#16a34a;">●</span> Column 2</div>
+          <span class="column-badge" id="col-2-count">1 Step</span>
+        </div>
+        <div id="col-cards-2"></div>
+      </div>
+
+      <!-- COLUMN 3 -->
+      <div class="column-wrapper" id="col-container-3">
+        <div class="column-header">
+          <div class="column-title"><span style="color:#ea580c;">●</span> Column 3</div>
+          <span class="column-badge" id="col-3-count">1 Step</span>
+        </div>
+        <div id="col-cards-3"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Subject Drilldown Modal -->
-  <div id="subjectDrilldownModal" class="hidden fixed inset-0 z-[90] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div class="flex items-center gap-3">
-          <div id="modalSubjectIconBadge" class="p-2.5 rounded-xl border">
-            <i data-lucide="bar-chart" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <h3 id="modalSubjectTitle" class="text-xl font-bold text-white">Subject Analytics</h3>
-            <p class="text-xs text-slate-400">Weekly & Monthly Performance Breakdown</p>
-          </div>
-        </div>
-        <button onclick="closeSubjectModal()" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800 border border-slate-700">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Hafte Ka Total</span>
-          <h4 id="modalSubjectWeeklyHours" class="text-2xl font-bold text-cyan-400 mt-1">0h 0m</h4>
-          <p class="text-[11px] text-slate-400 mt-1">Last 7 Days Progress</p>
-        </div>
-        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4">
-          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Mahine Ka Total</span>
-          <h4 id="modalSubjectMonthlyHours" class="text-2xl font-bold text-amber-400 mt-1">0h 0m</h4>
-          <p class="text-[11px] text-slate-400 mt-1">Current Month Progress</p>
-        </div>
-      </div>
-
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-5 space-y-3">
-        <div class="flex items-center justify-between">
-          <h5 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="trending-up" class="w-4 h-4 text-indigo-400"></i> Subject Progress Trends
-          </h5>
-          <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs">
-            <button onclick="switchDrilldownChart('week')" id="drillWeekBtn" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium">7 Days Trend</button>
-            <button onclick="switchDrilldownChart('month')" id="drillMonthBtn" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Month Trend</button>
-          </div>
-        </div>
-        <div class="relative h-48 w-full">
-          <canvas id="drilldownChartCanvas"></canvas>
-        </div>
-      </div>
-
-      <div class="space-y-3">
-        <h5 class="text-xs font-bold uppercase tracking-wider text-slate-300">Completed Topics In This Subject</h5>
-        <div id="modalTopicList" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Alarm Modal -->
-  <div id="alarmModal" class="hidden fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-emerald-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl animate-bounce">
-      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
-        <i data-lucide="bell-ring" class="w-8 h-8 animate-pulse"></i>
-      </div>
-      <h3 class="text-xl font-bold text-white mb-1">Session Complete!</h3>
-      <p id="alarmTopicText" class="text-sm text-slate-300 mb-6">Aapka study session poora ho gaya hai.</p>
-      <button onclick="stopAlarm()" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg transition">
-        Stop Alarm & Continue
-      </button>
-    </div>
-  </div>
-
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-950/60 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <div class="p-2 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-          <i data-lucide="shield-check" class="w-6 h-6"></i>
-        </div>
+    <!-- STEP 2: COMPLETE WEEKLY OUTPUT -->
+    <section class="output-section">
+      <div class="output-header">
         <div>
-          <h1 class="text-xl font-bold tracking-tight">StudyTracker Pro</h1>
-          <p class="text-xs text-slate-400">⚡ Powered by 𓊈 ꕶ𝐚𐍄ꪗ𝓪𝓂 𓊉 🚩</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button onclick="openAuthModal()" id="userAuthStatusBtn" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-indigo-300 hover:bg-slate-700 transition">
-          <span id="cloudStatusIndicator" class="w-2 h-2 rounded-full bg-amber-400"></span>
-          <span id="userNameTag">Login (Name + Mail)</span>
-        </button>
-        <div class="flex items-center gap-2 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="currentDateDisplay" class="text-xs font-semibold text-slate-300"></span>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 mt-8">
-
-    <!-- Active Live Timer Box -->
-    <div id="activeTimerCard" class="hidden mb-8 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/50 rounded-2xl p-6 shadow-2xl">
-      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="flex items-center gap-4 text-left">
-          <div id="timerIconWrapper" class="p-3 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
-            <i id="timerHourglassIcon" data-lucide="hourglass" class="w-7 h-7 animate-spin"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span id="sessionStatusTag" class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">LOCKED SESSION</span>
-              <span id="liveSubjectTag" class="text-xs font-bold text-indigo-300"></span>
-            </div>
-            <h4 id="activeSessionTopic" class="text-base font-bold text-white mt-1">Topic Details...</h4>
-            <p id="liveStartTimeTag" class="text-xs text-slate-400">Started at: --:-- --</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="text-right">
-            <span class="text-xs text-slate-400 block font-medium">Time Left</span>
-            <span id="countdownDisplay" class="text-3xl font-mono font-black text-amber-400">00:00:00</span>
-          </div>
-          
-          <button id="pauseResumeBtn" onclick="togglePauseResumeSession()" class="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5">
-            <i id="pauseResumeIcon" data-lucide="pause" class="w-3.5 h-3.5"></i>
-            <span id="pauseResumeText">Pause</span>
-          </button>
-
-          <button onclick="abandonActiveSession()" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold rounded-xl transition">
-            Quit Session
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- KPI Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Mahine Ka Total</p>
-        <h3 id="monthlyTotalHours" class="text-2xl font-bold text-amber-400 mt-1">0h 0m</h3>
-        <p class="text-xs text-slate-400 mt-2">This Month</p>
-      </div>
-
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Is Hafte Ka Total</p>
-        <h3 id="weeklyTotalHours" class="text-2xl font-bold text-cyan-400 mt-1">0h 0m</h3>
-        <p class="text-xs text-slate-400 mt-2">Last 7 Days</p>
-      </div>
-
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Aaj Ki Padhai</p>
-        <h3 id="todayTotalHours" class="text-2xl font-bold text-indigo-400 mt-1">0h 0m</h3>
-        <p id="todayGoalTag" class="text-xs text-slate-400 mt-2">Daily Goal: 6 hrs</p>
-      </div>
-
-      <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Topics Aaj</p>
-        <h3 id="todayTopicCount" class="text-2xl font-bold text-emerald-400 mt-1">0</h3>
-        <p class="text-xs text-slate-400 mt-2">Completed entries</p>
-      </div>
-    </div>
-
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      
-      <!-- Left Column -->
-      <div class="lg:col-span-5 space-y-6">
-        <div id="formWrapper" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold flex items-center gap-2">
-              <i data-lucide="play-circle" class="w-5 h-5 text-indigo-400"></i> Start Study Session
-            </h2>
-            <span class="text-[11px] font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-md">
-              Dropdown Select
-            </span>
-          </div>
-          
-          <form id="studyForm" class="space-y-4">
-            <div>
-              <div class="flex justify-between items-center mb-1">
-                <label class="block text-xs font-medium text-slate-300">Subject Select Karein</label>
-                <div class="flex items-center gap-2">
-                  <button type="button" onclick="openAddSubjectModal()" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
-                  </button>
-                  <span class="text-slate-600">|</span>
-                  <button type="button" onclick="deleteCurrentSubject()" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete
-                  </button>
-                </div>
-              </div>
-              <div class="relative">
-                <select id="subjectSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white">
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Session Duration</label>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[11px] text-slate-400 mb-0.5">Hours</label>
-                  <select id="hoursSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
-                    <option value="0">0 Hour</option>
-                    <option value="1" selected>1 Hour</option>
-                    <option value="2">2 Hours</option>
-                    <option value="3">3 Hours</option>
-                    <option value="4">4 Hours</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[11px] text-slate-400 mb-0.5">Minutes</label>
-                  <select id="minutesSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
-                    <option value="0">0 Min</option>
-                    <option value="5" selected>5 Mins</option>
-                    <option value="10">10 Mins</option>
-                    <option value="15">15 Mins</option>
-                    <option value="20">20 Mins</option>
-                    <option value="25">25 Mins</option>
-                    <option value="30">30 Mins</option>
-                    <option value="35">35 Mins</option>
-                    <option value="40">40 Mins</option>
-                    <option value="45">45 Mins</option>
-                    <option value="50">50 Mins</option>
-                    <option value="55">55 Mins</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1">Topic Name / Chapter Goal</label>
-              <textarea id="topicInput" rows="3" required placeholder="e.g. Page no 40-50 tak"
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-white"></textarea>
-            </div>
-
-            <button type="submit" id="startBtn"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
-              <i data-lucide="play" class="w-4 h-4"></i> Start Study Timer Now
-            </button>
-          </form>
-        </div>
-
-        <!-- Subject Split Card -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-3">
-            <div>
-              <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i> Subject-Wise Split
-              </h3>
-              <span class="text-[10px] text-indigo-400 block mt-0.5">💡 Subject par click karke weekly/monthly graph dekhein</span>
-            </div>
-            
-            <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs self-start sm:self-auto">
-              <button onclick="setChartTimeframe('today')" id="chartTabToday" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition">Today</button>
-              <button onclick="setChartTimeframe('week')" id="chartTabWeek" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition">Weekly</button>
-              <button onclick="setChartTimeframe('month')" id="chartTabMonth" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition">Monthly</button>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center text-xs text-slate-400 px-1">
-            <span>Duration: <b id="chartTotalTime" class="text-indigo-300 font-semibold">0h 0m</b></span>
-            <div class="flex items-center gap-2">
-              <button onclick="toggleChartType('doughnut')" id="btnDoughnut" class="p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600" title="Donut Chart">
-                <i data-lucide="circle-dot" class="w-3.5 h-3.5"></i>
-              </button>
-              <button onclick="toggleChartType('bar')" id="btnBar" class="p-1 rounded bg-slate-900 text-slate-400 hover:text-slate-800" title="Bar Chart">
-                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="relative h-56 w-full flex items-center justify-center cursor-pointer">
-            <canvas id="subjectChart"></canvas>
-            <div id="noChartDataMsg" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-xs">
-              <i data-lucide="pie-chart" class="w-8 h-8 mb-1 opacity-30"></i>
-              <span>Is timeframe me koi study entry nahi hai.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Column -->
-      <div class="lg:col-span-7 space-y-6">
-        <div class="bg-gradient-to-br from-indigo-950/80 via-slate-800 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 shadow-xl">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-lg font-bold flex items-center gap-2 text-indigo-200">
-              <i data-lucide="sun-medium" class="w-5 h-5 text-amber-400"></i> Daily Performance Report
-            </h2>
-            <div class="flex items-center gap-2">
-              <!-- PDF Export Action Buttons -->
-              <button onclick="exportColorfulPDF('today')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition shadow-sm" title="Download Daily Report PDF">
-                <i data-lucide="file-down" class="w-3.5 h-3.5"></i> PDF (Today)
-              </button>
-              <button onclick="exportColorfulPDF('week')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition shadow-sm" title="Download Weekly Report PDF">
-                <i data-lucide="file-down" class="w-3.5 h-3.5"></i> PDF (Weekly)
-              </button>
-            </div>
-          </div>
-
-          <!-- Comparison Card -->
-          <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 mb-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
-              <span class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-400"></i> Kal vs Aaj (Is Time Tak)
-              </span>
-              <span id="comparisonBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-md">--</span>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4 text-center">
-              <div class="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/40">
-                <p class="text-[11px] text-slate-400">Kal Is Samay Tak</p>
-                <h4 id="yesterdayTimeTillNow" class="text-base font-bold text-slate-300 mt-0.5">0h 0m</h4>
-              </div>
-              <div class="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/40">
-                <p class="text-[11px] text-slate-400">Aaj Ab Tak</p>
-                <h4 id="todayTimeTillNow" class="text-base font-bold text-indigo-400 mt-0.5">0h 0m</h4>
-              </div>
-            </div>
-            <p id="comparisonDiffText" class="text-xs text-center mt-3 text-slate-300 font-medium">Comparison calculate ho raha hai...</p>
-          </div>
-
-          <!-- Dynamic Progress Bar -->
-          <div class="space-y-1.5 mb-4">
-            <div class="flex justify-between text-xs font-semibold">
-              <span id="dynamicTargetLabel" class="text-slate-300">Daily Target (6 Hours)</span>
-              <span id="goalPercentText" class="text-indigo-400">0%</span>
-            </div>
-            <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
-              <div id="goalProgressBar" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-          </div>
-
-          <p id="motivationalText" class="text-xs italic text-slate-400 border-l-2 border-indigo-400 pl-3 py-0.5">
-            Session complete karein aur apni progress analyze karein.
+          <h2 style="font-size: 19px; font-weight: 800; color: #1e293b;">📄 POORA WEEKLY ROUTINE OUTPUT</h2>
+          <p style="font-size: 13px; color: #64748b; margin-top: 3px;">
+            Aapki Total Classes (jaise 100) ke pure hone tak sabhi weeks <b>(WEEK 1, WEEK 2, WEEK 3...)</b> ka complete schedule:
           </p>
         </div>
-
-        <!-- History Container -->
-        <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between border-b border-slate-700/80 pb-4 mb-4">
-            <h3 class="text-md font-bold flex items-center gap-2">
-              <i data-lucide="list-checks" class="w-5 h-5 text-indigo-400"></i> Study Logs History
-            </h3>
-            <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60 text-xs">
-              <button onclick="changeView('month')" id="tabMonth" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Monthly</button>
-              <button onclick="changeView('week')" id="tabWeek" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium">Weekly</button>
-              <button onclick="changeView('today')" id="tabToday" class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium">Today</button>
-            </div>
-          </div>
-          <div id="logsContainer" class="space-y-3 max-h-[380px] overflow-y-auto pr-1"></div>
+        <div>
+          <span id="totalWeeksCountBadge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; padding:6px 14px; border-radius:6px; font-size:13px; border:1px solid #bfdbfe;">
+            Total Weeks: 1
+          </span>
         </div>
       </div>
 
-    </div>
-  </main>
+      <div id="allWeeklySheetsContainer" class="all-weeks-container"></div>
+    </section>
+  </div>
 
   <script>
-    const SUPABASE_PROJECT_URL = "https://yffohnbxwurnaajanvuc.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZm9obmJ4d3VybmFhamFudnVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMjQ0MjIsImV4cCI6MjEwMjkwMDQyMn0.RcOjYyuf2Ip_giYl6ppcMi-SS76WwS4lnQSWyVJ8fv0";
-    
-    let supabaseClient = null;
-    try {
-      if (window.supabase && typeof window.supabase.createClient === 'function') {
-        supabaseClient = window.supabase.createClient(SUPABASE_PROJECT_URL, SUPABASE_ANON_KEY);
-      }
-    } catch(err) {
-      console.warn("Supabase bypass:", err);
-    }
-
-    // Register Background Service Worker with 6 AM Alarm & Lock Screen Stop Action
-    let swRegistration = null;
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then((reg) => {
-        swRegistration = reg;
-        if (reg.active) {
-          reg.active.postMessage({ type: 'SCHEDULE_MORNING_ALARM' });
-        } else {
-          navigator.serviceWorker.ready.then(activeReg => {
-            activeReg.active.postMessage({ type: 'SCHEDULE_MORNING_ALARM' });
-          });
-        }
-      }).catch((err) => {
-        console.warn("Service Worker registration bypassed:", err);
-      });
-
-      // 🔔 Lock Screen / Notification Panel ke "Stop Alarm" button ka listener
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'STOP_ALARM_FROM_NOTIFICATION') {
-          stopAlarm();
-          showToast("🛑 Alarm stopped from Notification!");
-        }
-      });
-    }
-
-    function requestNotificationPermission() {
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-      }
-    }
-
-    // Show Welcome Modal on first launch
-    window.addEventListener('DOMContentLoaded', () => {
-      const hasSeenWelcome = localStorage.getItem('has_seen_welcome_popup');
-      if (!hasSeenWelcome) {
-        document.getElementById('welcomeModal').classList.remove('hidden');
-        lucide.createIcons();
-      }
-      
-      checkStaticGKAndSpecialDays(true);
-      
-      setInterval(() => {
-        checkStaticGKAndSpecialDays(false);
-      }, 105 * 60 * 1000);
-    });
-
-    function dismissWelcomeModal() {
-      document.getElementById('welcomeModal').classList.add('hidden');
-      localStorage.setItem('has_seen_welcome_popup', 'true');
-      requestNotificationPermission();
-    }
-
-    // ==========================================
-    // COMPLETE STATIC GK & SPECIAL DAYS DATABASE
-    // ==========================================
-    function checkStaticGKAndSpecialDays(isPopupAlert = false) {
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const day = now.getDate();
-      const dateKey = `${month}-${day}`;
-
-      const staticGKDays = {
-        // January
-        "1-1": { title: "1 January — अंग्रेजी नववर्ष / ग्लोबल फैमिली डे", body: "Naye saal ki shubhkamnayein! Global Family Day ki hardik badhai." },
-        "1-4": { title: "4 January — विश्व ब्रेल दिवस", body: "Visheshroop se saksham logon ke samman me World Braille Day." },
-        "1-5": { title: "5 January — राष्ट्रीय पक्षी दिवस", body: "National Bird Day - Pakshiyon ke sanrakshan ka sankalp lein." },
-        "1-6": { title: "6 January — विश्व युद्ध अनाथ दिवस", body: "World War Orphans Day." },
-        "1-9": { title: "9 January — प्रवासी भारतीय दिवस", body: "Pravasi Bharatiya Divas ki hardik shubhkamnayein!" },
-        "1-10": { title: "10 January — विश्व हिंदी दिवस", body: "Vishva Hindi Diwas - Hamari bhasha, hamari pehchan!" },
-        "1-11": { title: "11 January — लाल बहादुर शास्त्री पुण्यतिथि", body: "Jai Jawan Jai Kisan! Lal Bahadur Shastri ji ko naman." },
-        "1-12": { title: "12 January — राष्ट्रीय युवा दिवस", body: "Swami Vivekananda Jayanti & National Youth Day! Utho, jaago aur tab tak mat ruko jab tak lakshya na prapt ho." },
-        "1-15": { title: "15 January — भारतीय सेना दिवस / 🎂 Happy Birthday Admin's Sweetheart", body: "Indian Army Day! Aur sath hi 🎂 Happy Birthday Admin's Sweetheart! 🎉" },
-        "1-16": { title: "16 January — राष्ट्रीय स्टार्टअप दिवस", body: "National Startup Day." },
-        "1-23": { title: "23 January — नेताजी सुभाषचंद्र बोस जयंती", body: "Tum mujhe khoon do, main tumhe azaadi dunga! Netaji ko naman." },
-        "1-24": { title: "24 January — राष्ट्रीय बालिका दिवस", body: "National Girl Child Day." },
-        "1-25": { title: "25 January — राष्ट्रीय मतदाता दिवस / अंतर्राष्ट्रीय पर्यटन दिवस", body: "National Voters Day & International Tourism Day." },
-        "1-26": { title: "26 January — अंतर्राष्ट्रीय सीमा शुल्क दिवस", body: "International Customs Day." },
-        "1-27": { title: "27 January — अंतर्राष्ट्रीय होलोकॉस्ट दिवस", body: "Holocaust Remembrance Day." },
-        "1-28": { title: "28 January — लाला लाजपत राय जयंती / डेटा प्रोटेक्शन दिवस", body: "Punjab Kesari Lala Lajpat Rai Jayanti & Data Protection Day." },
-        "1-30": { title: "30 January — शहीद दिवस / कुष्ठ उन्मूलन दिवस", body: "Martyrs' Day & Leprosy Elimination Day." },
-        "1-31": { title: "31 January — अंतर्राष्ट्रीय ज़ेब्रा दिवस", body: "International Zebra Day." },
-
-        // February
-        "2-1": { title: "1 February — भारतीय तटरक्षक दिवस", body: "Indian Coast Guard Day." },
-        "2-2": { title: "2 February — विश्व आर्द्रभूमि दिवस", body: "World Wetlands Day." },
-        "2-4": { title: "4 February — विश्व कैंसर दिवस", body: "World Cancer Day - Jagrukta hi bachav hai." },
-        "2-6": { title: "6 February — महिला जननांग विकृति के प्रति शून्य सहिष्णुता दिवस", body: "Zero Tolerance to FGM Day." },
-        "2-8": { title: "8 February — सुरक्षित इंटरनेट दिवस", body: "Safer Internet Day." },
-        "2-10": { title: "10 February — राष्ट्रीय कृमिनाशक दिवस / विश्व दलहन दिवस", body: "National Deworming Day & World Pulses Day." },
-        "2-11": { title: "11 February — बीमारों का विश्व दिवस / अंतर्राष्ट्रीय महिला एवं बालिका विज्ञान दिवस", body: "World Day of the Sick & Women in Science Day." },
-        "2-21": { title: "21 February — अंतर्राष्ट्रीय मातृभाषा दिवस", body: "International Mother Language Day." },
-        "2-22": { title: "22 February — विश्व चिंतन दिवस", body: "World Thinking Day." },
-        "2-24": { title: "24 February — केंद्रीय उत्पाद शुल्क दिवस", body: "Central Excise Day." },
-        "2-27": { title: "27 February — विश्व NGO दिवस", body: "World NGO Day." },
-        "2-28": { title: "28 February — राष्ट्रीय विज्ञान दिवस", body: "National Science Day - C.V. Raman ji ko naman." },
-
-        // March
-        "3-1": { title: "1 March — शून्य भेदभाव दिवस", body: "Zero Discrimination Day." },
-        "3-3": { title: "3 March — विश्व वन्यजीव दिवस", body: "World Wildlife Day." },
-        "3-4": { title: "4 March — राष्ट्रीय सुरक्षा दिवस", body: "National Security Day." },
-        "3-8": { title: "8 March — अंतर्राष्ट्रीय महिला दिवस", body: "International Women's Day ki hardik shubhkamnayein!" },
-        "3-10": { title: "10 March — CISF स्थापना दिवस", body: "CISF Raising Day." },
-        "3-14": { title: "14 March — पाई दिवस", body: "Pi Day (3.14)." },
-        "3-15": { title: "15 March — विश्व उपभोक्ता अधिकार दिवस", body: "World Consumer Rights Day." },
-        "3-16": { title: "16 March — राष्ट्रीय टीकाकरण दिवस", body: "National Vaccination Day." },
-        "3-20": { title: "20 March — अंतर्राष्ट्रीय प्रसन्नता दिवस / विश्व गौरैया दिवस", body: "International Day of Happiness & World Sparrow Day." },
-        "3-21": { title: "21 March — विश्व वानिकी दिवस", body: "World Forestry Day." },
-        "3-22": { title: "22 March — विश्व जल दिवस", body: "World Water Day - Jal hi jeevan hai, pani bachayein." },
-        "3-23": { title: "23 March — विश्व मौसम विज्ञान दिवस", body: "World Meteorological Day." },
-        "3-24": { title: "24 March — विश्व क्षय रोग दिवस", body: "World TB Day." },
-
-        // April
-        "4-1": { title: "1 April — ओडिशा स्थापना दिवस / अप्रैल फूल दिवस", body: "Utkal Divas & April Fools' Day." },
-        "4-2": { title: "2 April — विश्व ऑटिज़्म जागरूकता दिवस", body: "World Autism Awareness Day." },
-        "4-17": { title: "17 April — विश्व हीमोफीलिया दिवस", body: "World Hemophilia Day." },
-        "4-18": { title: "18 April — विश्व धरोहर दिवस", body: "World Heritage Day." },
-        "4-21": { title: "21 April — राष्ट्रीय सिविल सेवा दिवस", body: "National Civil Services Day." },
-        "4-22": { title: "22 April — विश्व पृथ्वी दिवस", body: "World Earth Day - Prithvi ko hara-bhara banayein." },
-        "4-24": { title: "24 April — राष्ट्रीय पंचायती राज दिवस", body: "National Panchayati Raj Day." },
-        "4-25": { title: "25 April — विश्व मलेरिया दिवस", body: "World Malaria Day." },
-        "4-26": { title: "26 April — विश्व बौद्धिक संपदा दिवस", body: "World Intellectual Property Day." },
-        "4-28": { title: "28 April — कार्यस्थल पर सुरक्षा एवं स्वास्थ्य दिवस", body: "Safety and Health at Work Day." },
-
-        // May
-        "5-1": { title: "1 मई — अंतर्राष्ट्रीय मजदूर दिवस / महाराष्ट्र दिवस / गुजरात दिवस / विश्व हास्य दिवस", body: "Labour Day, Maharashtra/Gujarat Foundation Day & World Laughter Day." },
-        "5-3": { title: "3 May — प्रेस स्वतंत्रता दिवस", body: "Press Freedom Day." },
-        "5-7": { title: "7 May — विश्व एथलेटिक्स दिवस", body: "World Athletics Day." },
-        "5-8": { title: "8 May — विश्व रेड क्रॉस दिवस / विश्व थैलेसीमिया दिवस", body: "World Red Cross & Thalassemia Day." },
-        "5-9": { title: "9 May — रवींद्रनाथ टैगोर जयंती", body: "Rabindranath Tagore Jayanti." },
-        "5-11": { title: "11 May — राष्ट्रीय प्रौद्योगिकी दिवस", body: "National Technology Day." },
-        "5-12": { title: "12 May — अंतर्राष्ट्रीय नर्स दिवस", body: "International Nurses Day." },
-        "5-17": { title: "17 May — विश्व दूरसंचार दिवस / विश्व उच्च रक्तचाप दिवस", body: "Telecom & Hypertension Day." },
-        "5-18": { title: "18 May — अंतर्राष्ट्रीय संग्रहालय दिवस", body: "International Museum Day." },
-        "5-21": { title: "21 May — राष्ट्रीय आतंकवाद विरोधी दिवस / चाय दिवस", body: "Anti-Terrorism Day & Tea Day." },
-        "5-22": { title: "22 May — अंतर्राष्ट्रीय जैव विविधता दिवस", body: "Biological Diversity Day." },
-        "5-25": { title: "25 May — थायरॉयड दिवस", body: "World Thyroid Day." },
-        "5-31": { title: "31 May — धूम्रपान निषेध दिवस", body: "World No Tobacco Day." },
-
-        // June
-        "6-1": { title: "1 June — विश्व दुग्ध दिवस", body: "World Milk Day." },
-        "6-2": { title: "2 June — तेलंगाना स्थापना दिवस", body: "Telangana Formation Day." },
-        "6-3": { title: "3 June — विश्व साइकिल दिवस", body: "World Bicycle Day." },
-        "6-5": { title: "5 June — विश्व पर्यावरण दिवस", body: "World Environment Day - Ped lagayein, paryavaran bachayein." },
-        "6-7": { title: "7 June — विश्व खाद्य सुरक्षा दिवस", body: "World Food Safety Day." },
-        "6-8": { title: "8 June — विश्व महासागर दिवस", body: "World Oceans Day." },
-        "6-12": { title: "12 June — बाल श्रम निषेध दिवस", body: "Anti-Child Labour Day." },
-        "6-14": { title: "14 June — विश्व रक्तदाता दिवस", body: "World Blood Donor Day." },
-        "6-20": { title: "20 June — विश्व शरणार्थी दिवस", body: "World Refugee Day." },
-        "6-21": { title: "21 June — अंतर्राष्ट्रीय योग दिवस", body: "International Yoga Day - Karo yog, raho nirog!" },
-        "6-23": { title: "23 June — अंतर्राष्ट्रीय ओलंपिक दिवस", body: "International Olympic Day." },
-        "6-27": { title: "27 June — सूक्ष्म, लघु एवं मध्यम उद्यम दिवस", body: "MSME Day." },
-        "6-29": { title: "29 June — राष्ट्रीय सांख्यिकी दिवस", body: "National Statistics Day." },
-
-        // July
-        "7-1": { title: "1 July — राष्ट्रीय चिकित्सक दिवस / CA दिवस", body: "National Doctors' Day & Chartered Accountants Day." },
-        "7-11": { title: "11 July — विश्व जनसंख्या दिवस", body: "World Population Day." },
-        "7-19": { title: "19 July — 🎂 Happy Birthday Admin (Satyam Bhaiya)", body: "🎉 Special Day: Happy Birthday to our Admin Satyam Bhaiya! 🎂 Aaj ke din khoob mehnat karein aur cake khayein!" },
-        "7-26": { title: "26 July — कारगिल विजय दिवस", body: "Kargil Vijay Day - Veero ko shat shat naman!" },
-        "7-28": { title: "28 July — विश्व हेपेटाइटिस दिवस / प्रकृति संरक्षण दिवस", body: "World Hepatitis Day & Nature Conservation Day." },
-        "7-29": { title: "29 July — अंतर्राष्ट्रीय बाघ दिवस", body: "International Tiger Day." },
-
-        // August
-        "8-6": { title: "6 August — हिरोशिमा दिवस", body: "Hiroshima Day." },
-        "8-7": { title: "7 August — राष्ट्रीय हथकरघा दिवस / राष्ट्रीय जेवलिन दिवस", body: "National Handloom & Javelin Throw Day (Neeraj Chopra Day)." },
-        "8-9": { title: "9 August — नागासाकी दिवस", body: "Nagasaki Day." },
-        "8-12": { title: "12 August — अंतर्राष्ट्रीय युवा दिवस / विश्व हाथी दिवस", body: "International Youth Day & World Elephant Day." },
-        "8-13": { title: "13 August — विश्व अंगदान दिवस", body: "World Organ Donation Day." },
-        "8-15": { title: "15 August — भारत का स्वतंत्रता दिवस", body: "🇮🇳 Swatantrata Diwas ki hardik shubhkamnayein!" },
-        "8-19": { title: "19 August — विश्व फोटोग्राफी दिवस / मानवीय दिवस", body: "World Photography & Humanitarian Day." },
-        "8-20": { title: "20 August — सद्भावना दिवस", body: "Sadbhavana Diwas." },
-        "8-26": { title: "26 August — महिला समानता दिवस", body: "Women's Equality Day." },
-        "8-29": { title: "29 August — राष्ट्रीय खेल दिवस", body: "National Sports Day - Major Dhyan Chand ji ko naman." },
-
-        // September
-        "9-5": { title: "5 September — शिक्षक दिवस", body: "Happy Teachers' Day! Dr. Sarvepalli Radhakrishnan ji ko naman." },
-        "9-8": { title: "8 September — अंतर्राष्ट्रीय साक्षरता दिवस", body: "International Literacy Day." },
-        "9-14": { title: "14 September — हिंदी दिवस", body: "Hindi Divas ki hardik shubhkamnayein!" },
-        "9-15": { title: "15 September — अभियंता दिवस", body: "Engineer's Day (M. Visvesvaraya Jayanti)." },
-        "9-16": { title: "16 September — विश्व ओज़ोन दिवस", body: "World Ozone Day." },
-        "9-21": { title: "21 September — अंतर्राष्ट्रीय शांति दिवस", body: "International Day of Peace." },
-        "9-27": { title: "27 September — विश्व पर्यटन दिवस", body: "World Tourism Day." },
-
-        // October
-        "10-1": { title: "1 October — अंतर्राष्ट्रीय वृद्धजन दिवस", body: "International Day of Older Persons." },
-        "10-2": { title: "2 October — गांधी जयंती / अंतर्राष्ट्रीय अहिंसा दिवस", body: "Mahatma Gandhi & Lal Bahadur Shastri Jayanti." },
-        "10-5": { title: "5 October — विश्व शिक्षक दिवस", body: "World Teachers' Day." },
-        "10-8": { title: "8 October — भारतीय वायु सेना दिवस", body: "Indian Air Force Day." },
-        "10-9": { title: "9 October — विश्व डाक दिवस", body: "World Post Day." },
-        "10-10": { title: "10 October — विश्व मानसिक स्वास्थ्य दिवस", body: "World Mental Health Day." },
-        "10-11": { title: "11 October — अंतर्राष्ट्रीय बालिका दिवस", body: "International Girl Child Day." },
-        "10-24": { title: "24 October — संयुक्त राष्ट्र दिवस", body: "United Nations Day." },
-        "10-31": { title: "31 October — राष्ट्रीय एकता दिवस", body: "National Unity Day (Sardar Vallabhbhai Patel Jayanti)." },
-
-        // November
-        "11-7": { title: "7 November — राष्ट्रीय कैंसर जागरूकता दिवस", body: "National Cancer Awareness Day." },
-        "11-11": { title: "11 November — राष्ट्रीय शिक्षा दिवस", body: "National Education Day (Maulana Abul Kalam Azad Jayanti)." },
-        "11-14": { title: "14 November — बाल दिवस / विश्व मधुमेह दिवस", body: "Children's Day & World Diabetes Day." },
-        "11-19": { title: "19 November — अंतर्राष्ट्रीय पुरुष दिवस", body: "International Men's Day." },
-        "11-26": { title: "26 November — भारत का संविधान दिवस", body: "Constitution Day of India." },
-
-        // December
-        "12-1": { title: "1 December — विश्व एड्स दिवस", body: "World AIDS Day." },
-        "12-2": { title: "2 December — राष्ट्रीय प्रदूषण नियंत्रण दिवस / कंप्यूटर साक्षरता दिवस", body: "Pollution Control & Computer Literacy Day." },
-        "12-3": { title: "3 December — विश्व विकलांग दिवस", body: "World Disability Day." },
-        "12-4": { title: "4 December — भारतीय नौसेना दिवस", body: "Indian Navy Day." },
-        "12-5": { title: "5 December — विश्व मृदा दिवस", body: "World Soil Day." },
-        "12-7": { title: "7 December — सशस्त्र सेना ध्वज दिवस", body: "Armed Forces Flag Day." },
-        "12-10": { title: "10 December — मानवाधिकार दिवस", body: "Human Rights Day." },
-        "12-16": { title: "16 December — विजय दिवस", body: "Vijay Diwas." },
-        "12-22": { title: "22 December — राष्ट्रीय गणित दिवस", body: "National Mathematics Day (Srinivasa Ramanujan Jayanti)." },
-        "12-23": { title: "23 December — किसान दिवस", body: "Kisan Diwas (Farmers' Day)." },
-        "12-24": { title: "24 December — राष्ट्रीय उपभोक्ता अधिकार दिवस", body: "National Consumer Rights Day." },
-        "12-25": { title: "25 December — सुशासन दिवस", body: "Good Governance Day (Atal Bihari Vajpayee Jayanti)." },
-        "12-26": { title: "26 December — वीर बाल दिवस", body: "Veer Baal Diwas." }
-      };
-
-      if (staticGKDays[dateKey]) {
-        const item = staticGKDays[dateKey];
-        if (isPopupAlert) {
-          showToast(`📢 ${item.title}: ${item.body}`, true);
-        }
-        if ('Notification' in window && Notification.permission === 'granted') {
-          if (swRegistration && swRegistration.active) {
-            swRegistration.active.postMessage({
-              type: 'TRIGGER_SESSION_NOTIFICATION',
-              title: item.title,
-              body: item.body
-            });
-          } else {
-            new Notification(item.title, { body: item.body });
-          }
-        }
-      }
-    }
-
-    function triggerSystemLockScreenNotification(topicName, durationMins) {
-      const title = "Study Session Complete! 🏆";
-      const body = `Shaandaar! Aapka "${topicName}" session (${formatTime(durationMins)}) complete ho gaya hai.`;
-
-      if (swRegistration && swRegistration.active) {
-        swRegistration.active.postMessage({
-          type: 'TRIGGER_SESSION_NOTIFICATION',
-          title: title,
-          body: body
-        });
-      } else if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body: body });
-      }
-    }
-
-    // ==========================================
-    // BACKEND WEB PUSH NOTIFICATION HELPERS
-    // ==========================================
-    async function scheduleBackendNotification(topic, durationMins, endTimeISO) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('scheduled_notifications').insert([{
-          user_email: currentProfile.email,
-          title: "Study Session Complete! 🏆",
-          body: `Shaandaar! Aapka "${topic}" (${formatTime(durationMins)}) session poora ho gaya!`,
-          trigger_at: endTimeISO,
-          is_sent: false
-        }]);
-      } catch (err) {
-        console.warn("Backend notification schedule failed:", err);
-      }
-    }
-
-    async function clearPendingBackendNotifications() {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('scheduled_notifications')
-          .delete()
-          .eq('user_email', currentProfile.email)
-          .eq('is_sent', false);
-      } catch (err) {
-        console.warn("Clear pending notifications failed:", err);
-      }
-    }
-
-    const initialDefaultSubjects = [
-      'General Studies (GS)',
-      'Mathematics',
-      'Reasoning',
-      'Hindi',
-      'English',
-      'History',
-      'Geography',
-      'Science'
+    const DAYS_CYCLE = [
+      { code: 'S', name: 'Sunday' },
+      { code: 'M', name: 'Monday' },
+      { code: 'T', name: 'Tuesday' },
+      { code: 'W', name: 'Wednesday' },
+      { code: 'T', name: 'Thursday' },
+      { code: 'F', name: 'Friday' },
+      { code: 'S', name: 'Saturday' },
+      { code: 'S', name: 'Sunday' }
     ];
 
-    let storedSubjects = null;
-    try {
-      storedSubjects = JSON.parse(localStorage.getItem('study_subjects_list'));
-    } catch(e) {
-      storedSubjects = null;
-    }
-
-    let subjects = (Array.isArray(storedSubjects) && storedSubjects.length > 0) ? storedSubjects : initialDefaultSubjects;
-    
-    let storedLogs = null;
-    try {
-      storedLogs = JSON.parse(localStorage.getItem('study_logs_data'));
-    } catch(e) {
-      storedLogs = null;
-    }
-    let logs = Array.isArray(storedLogs) ? storedLogs : [];
-
-    let storedActive = null;
-    try {
-      storedActive = JSON.parse(localStorage.getItem('active_study_session'));
-    } catch(e) {
-      storedActive = null;
-    }
-    let activeSession = storedActive;
-
-    let currentProfile = null;
-    try {
-      currentProfile = JSON.parse(localStorage.getItem('study_user_profile'));
-    } catch(e) {
-      currentProfile = null;
-    }
-
-    let currentSessionToken = localStorage.getItem('study_device_session_token');
-    if (!currentSessionToken) {
-      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('study_device_session_token', currentSessionToken);
-    }
-
-    let dailyTargetMins = parseInt(localStorage.getItem('daily_target_mins')) || 360;
-    let targetPromptShownForToday = localStorage.getItem('target_prompt_date') === getTodayDateString();
-
-    let currentFilter = 'today';
-    let currentChartTimeframe = 'week';
-    let currentChartType = 'doughnut';
-    let chartInstance = null;
-    let drilldownChartInstance = null;
-    let selectedDrilldownSubject = null;
-    let currentDrilldownView = 'week';
-    let timerInterval = null;
-    let alarmAudioInterval = null;
-    let sessionWatcherInterval = null;
-    let audioCtx = null;
-
-    const PALETTE_COLORS = [
-      '#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#8b5cf6',
-      '#3b82f6', '#14b8a6', '#f43f5e', '#eab308', '#a855f7', '#22c55e'
-    ];
-
-    function showToast(msg, isSuccess = true) {
-      const toast = document.getElementById('syncToast');
-      const dot = document.getElementById('syncToastDot');
-      const text = document.getElementById('syncToastMsg');
-      dot.className = `w-2 h-2 rounded-full ${isSuccess ? 'bg-emerald-400' : 'bg-rose-500 animate-ping'}`;
-      text.innerText = msg;
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 3500);
-    }
-
-    function getSubjectColor(subjectName) {
-      if (!subjectName) return '#6366f1';
-      let index = subjects.indexOf(subjectName);
-      if (index === -1) {
-        let hash = 0;
-        for (let i = 0; i < subjectName.length; i++) {
-          hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+    const INITIAL_DATA = {
+      1: [
+        {
+          id: 'c1_1',
+          weekNum: 1,
+          startDate: '2026-09-17',
+          subjectName: 'C A / POLITY',
+          subjectColor: '#1d4ed8',
+          contentTitle: 'BHAG',
+          startClass: 1,
+          totalClasses: 25,
+          dailyClasses: 1,
+          activeDays: [true, true, true, true, true, false, false, false],
+          remainingTask: 'UP GK PAGE 2',
+          completed: false
         }
-        index = Math.abs(hash) % PALETTE_COLORS.length;
+      ],
+      2: [
+        {
+          id: 'c2_1',
+          weekNum: 1,
+          startDate: '2026-09-17',
+          subjectName: 'SCIENCE',
+          subjectColor: '#16a34a',
+          contentTitle: 'BIOLOGY',
+          startClass: 1,
+          totalClasses: 40,
+          dailyClasses: 2,
+          activeDays: [true, true, true, false, false, false, false, false],
+          remainingTask: 'CHEMISTRY 2',
+          completed: false
+        }
+      ],
+      3: [
+        {
+          id: 'c3_1',
+          weekNum: 1,
+          startDate: '2026-09-17',
+          subjectName: 'GS',
+          subjectColor: '#ea580c',
+          contentTitle: 'ANCIENT',
+          startClass: 1,
+          totalClasses: 30,
+          dailyClasses: 2,
+          activeDays: [true, true, true, false, false, false, false, false],
+          remainingTask: 'REV',
+          completed: false
+        }
+      ]
+    };
+
+    let plannerData = JSON.parse(localStorage.getItem('satyam_planner_auto_all_classes')) || INITIAL_DATA;
+    let observationsData = JSON.parse(localStorage.getItem('satyam_planner_auto_observations')) || {};
+
+    function saveState() {
+      localStorage.setItem('satyam_planner_auto_all_classes', JSON.stringify(plannerData));
+      localStorage.setItem('satyam_planner_auto_observations', JSON.stringify(observationsData));
+    }
+
+    function addDays(dateString, days) {
+      const d = new Date(dateString);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function resetToInitial() {
+      if (confirm("Kya aap pura setup reset karna chahte hain?")) {
+        plannerData = JSON.parse(JSON.stringify(INITIAL_DATA));
+        observationsData = {};
+        saveState();
+        renderColumns();
+        renderAllWeeklySheets();
       }
-      return PALETTE_COLORS[index % PALETTE_COLORS.length];
     }
 
-    function getFormattedDate(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function getTodayDateString() {
-      return getFormattedDate(new Date());
-    }
-
-    function getYesterdayDateString() {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return getFormattedDate(yesterday);
-    }
-
-    function formatTime12Hour(input) {
-      if (!input) return '--:-- --';
-      if (typeof input === 'string' && (input.includes('AM') || input.includes('PM'))) return input;
-
-      let hours, minutes;
-      if (input instanceof Date) {
-        hours = input.getHours();
-        minutes = input.getMinutes();
-      } else if (typeof input === 'string' && input.includes(':')) {
-        const parts = input.split(':');
-        hours = parseInt(parts[0], 10);
-        minutes = parseInt(parts[1], 10);
-      } else {
-        return input;
+    function toggleSingleDay(colIndex, cardIndex, dayIndex) {
+      const task = plannerData[colIndex][cardIndex];
+      if (!task.activeDays || !Array.isArray(task.activeDays)) {
+        task.activeDays = [false, false, false, false, false, false, false, false];
       }
-
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const strMinutes = minutes < 10 ? '0' + minutes : minutes;
-      const strHours = hours < 10 ? '0' + hours : hours;
-      return `${strHours}:${strMinutes} ${ampm}`;
+      task.activeDays[dayIndex] = !task.activeDays[dayIndex];
+      saveState();
+      renderColumns();
+      renderAllWeeklySheets();
     }
 
-    document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-    });
+    // =========================================================================
+    // CORE FUNCTION: JUB CLICK KARE TO TOTAL CLASSES (e.g. 100) KA PURA SCHEDULE
+    // AUTOMATICALLY HAR WEEK KA GENERATE HO KAR AA JAYE!
+    // =========================================================================
+    function generateAllWeeksUntilComplete(colIndex) {
+      const list = plannerData[colIndex];
+      let currentTask = list[list.length - 1];
+      const total = Number(currentTask.totalClasses) || 0;
 
-    // ==========================================
-    // 2. MODAL & DROPDOWN MANAGEMENT
-    // ==========================================
-    function renderSubjectDropdown(selectedSubject = '') {
-      const select = document.getElementById('subjectSelect');
-      if (!select) return;
-      if (!subjects || subjects.length === 0) {
-        subjects = [...initialDefaultSubjects];
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-      }
-
-      select.innerHTML = subjects.map(sub => `
-        <option value="${sub}" ${sub === selectedSubject ? 'selected' : ''}>${sub}</option>
-      `).join('');
-    }
-
-    function openAddSubjectModal() {
-      document.getElementById('newSubjectNameInput').value = '';
-      document.getElementById('addSubjectModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('newSubjectNameInput').focus(), 50);
-      lucide.createIcons();
-    }
-
-    function closeAddSubjectModal() {
-      document.getElementById('addSubjectModal').classList.add('hidden');
-    }
-
-    document.getElementById('addSubjectForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const input = document.getElementById('newSubjectNameInput');
-      const clean = input.value.trim();
-      if (!clean) return;
-
-      if (!subjects.includes(clean)) {
-        subjects.push(clean);
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        saveSubjectToCloud(clean);
-        renderSubjectDropdown(clean);
-        renderAll();
-      } else {
-        renderSubjectDropdown(clean);
-      }
-      closeAddSubjectModal();
-    });
-
-    function deleteCurrentSubject() {
-      const select = document.getElementById('subjectSelect');
-      const subjectToDelete = select.value;
-      if (!subjectToDelete) return;
-
-      if (subjects.length <= 1) {
-        alert("Kam se kam ek subject ka hona zaroori hai!");
+      if (total <= 0) {
+        alert("Kripya Total No. Of Classes bharein!");
         return;
       }
 
-      if (confirm(`Kya aap subject "${subjectToDelete}" ko list se hatana chahte hain?`)) {
-        subjects = subjects.filter(s => s !== subjectToDelete);
-        localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        deleteSubjectFromCloud(subjectToDelete);
-        renderSubjectDropdown(subjects[0]);
-        renderAll();
-      }
-    }
+      // Mark the current active card as completed
+      currentTask.completed = true;
 
-    // ==========================================
-    // 3. SINGLE ACTIVE DEVICE SESSION ENGINE
-    // ==========================================
-    function updateUserUI() {
-      const tag = document.getElementById('userNameTag');
-      const ind = document.getElementById('cloudStatusIndicator');
-      if (currentProfile && currentProfile.name) {
-        tag.innerText = currentProfile.name;
-        ind.className = "w-2 h-2 rounded-full bg-emerald-400";
-      } else {
-        tag.innerText = 'Login (Name + Mail)';
-        ind.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-      }
-    }
+      // Loop and automatically append next weeks until all classes are scheduled
+      let safetyCounter = 0; // Prevent infinite loops
+      while (safetyCounter < 52) { // up to 1 year of weeks max
+        safetyCounter++;
 
-    function openAuthModal() {
-      if (currentProfile) {
-        if (confirm(`Aap currently "${currentProfile.name}" (${currentProfile.email}) ke roop me logged in hain. Logout karna chahte hain?`)) {
-          performLogout();
-          showToast("Logged out successfully");
-        }
-        return;
-      }
-      document.getElementById('loginNameInput').value = '';
-      document.getElementById('loginEmailInput').value = '';
-      document.getElementById('authErrorMsg').classList.add('hidden');
-      document.getElementById('authModal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeAuthModal() {
-      document.getElementById('authModal').classList.add('hidden');
-    }
-
-    function performLogout() {
-      currentProfile = null;
-      localStorage.removeItem('study_user_profile');
-      if (sessionWatcherInterval) {
-        clearInterval(sessionWatcherInterval);
-        sessionWatcherInterval = null;
-      }
-      updateUserUI();
-    }
-
-    function triggerForceLogoutUI() {
-      performLogout();
-      document.getElementById('forceLogoutModal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function acknowledgeForceLogout() {
-      document.getElementById('forceLogoutModal').classList.add('hidden');
-      location.reload();
-    }
-
-    function startSessionWatcher() {
-      if (sessionWatcherInterval) clearInterval(sessionWatcherInterval);
-      if (!supabaseClient || !currentProfile) return;
-
-      sessionWatcherInterval = setInterval(async () => {
-        if (!currentProfile) return;
-        try {
-          const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('current_session_id')
-            .eq('email', currentProfile.email)
-            .maybeSingle();
-
-          if (!error && data && data.current_session_id) {
-            if (data.current_session_id !== currentSessionToken) {
-              triggerForceLogoutUI();
-            }
-          }
-        } catch (e) {
-          console.warn("Session check bypass:", e);
-        }
-      }, 5000);
-    }
-
-    document.getElementById('simpleLoginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const nameInput = document.getElementById('loginNameInput').value.trim();
-      const emailInput = document.getElementById('loginEmailInput').value.trim().toLowerCase();
-      const errorMsg = document.getElementById('authErrorMsg');
-
-      if (!emailInput || !nameInput) return;
-
-      currentSessionToken = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-      localStorage.setItem('study_device_session_token', currentSessionToken);
-
-      if (!supabaseClient) {
-        currentProfile = { name: nameInput, email: emailInput };
-        localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
-        closeAuthModal();
-        updateUserUI();
-        showToast("Offline Profile Set");
-        return;
-      }
-
-      try {
-        const { data: existingUser, error: fetchErr } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .eq('email', emailInput)
-          .maybeSingle();
-
-        if (fetchErr) throw fetchErr;
-
-        if (existingUser) {
-          if (existingUser.name.trim().toLowerCase() !== nameInput.toLowerCase()) {
-            errorMsg.innerText = `⚠️ Ye email pehle se "${existingUser.name}" ke naam par registered hai! Kripya wahi naam enter karein.`;
-            errorMsg.classList.remove('hidden');
-            return;
-          }
+        const activeCount = (currentTask.activeDays || []).filter(Boolean).length;
+        if (activeCount === 0) {
+          alert("Kripya kam se kam 1 study day select karein!");
+          break;
         }
 
-        const { error: upsertErr } = await supabaseClient
-          .from('profiles')
-          .upsert([{ 
-            email: emailInput, 
-            name: nameInput,
-            current_session_id: currentSessionToken 
-          }]);
+        const daily = Number(currentTask.dailyClasses) || 1;
+        const coveredInThisWeek = daily * activeCount;
+        const nextStartClass = Number(currentTask.startClass) + coveredInThisWeek;
 
-        if (upsertErr) throw upsertErr;
-
-        currentProfile = { name: nameInput, email: emailInput };
-        localStorage.setItem('study_user_profile', JSON.stringify(currentProfile));
-        closeAuthModal();
-        updateUserUI();
-        showToast(`Welcome, ${nameInput}! Active on this device 📱`);
-
-        await syncDataWithCloud();
-        startSessionWatcher();
-
-      } catch (err) {
-        console.error("Login Auth Error:", err);
-        errorMsg.innerText = "Error: " + (err.message || "Database connection error");
-        errorMsg.classList.remove('hidden');
-      }
-    });
-
-    async function syncDataWithCloud() {
-      if (!supabaseClient || !currentProfile) return;
-
-      try {
-        const { data: cloudLogs, error: logErr } = await supabaseClient
-          .from('study_logs')
-          .select('*')
-          .eq('user_email', currentProfile.email);
-
-        if (logErr) throw logErr;
-
-        const cloudIds = new Set((cloudLogs || []).map(l => l.id));
-        const localLogsToUpload = logs.filter(l => !cloudIds.has(l.id));
-
-        if (localLogsToUpload.length > 0) {
-          const payload = localLogsToUpload.map(l => ({
-            id: l.id,
-            user_email: currentProfile.email,
-            subject: l.subject,
-            topic: l.topic,
-            duration: l.duration,
-            start_time: l.startTime,
-            end_time: l.endTime,
-            end_timestamp: l.endTimestamp || new Date().getTime(),
-            date: l.date
-          }));
-          await supabaseClient.from('study_logs').upsert(payload);
+        // If the subject is already done past total classes, stop creating further empty weeks
+        if (nextStartClass > total) {
+          break;
         }
 
-        const { data: refreshedLogs } = await supabaseClient
-          .from('study_logs')
-          .select('*')
-          .eq('user_email', currentProfile.email)
-          .order('created_at', { ascending: false });
+        const nextWeekNum = Number(currentTask.weekNum) + 1;
+        const nextStartDate = addDays(currentTask.startDate, 8); // +8 days cycle
 
-        if (refreshedLogs) {
-          logs = refreshedLogs.map(l => ({
-            id: l.id,
-            subject: l.subject,
-            topic: l.topic,
-            duration: l.duration,
-            startTime: l.start_time,
-            endTime: l.end_time,
-            endTimestamp: l.end_timestamp,
-            date: l.date,
-            createdAt: l.created_at
-          }));
-          localStorage.setItem('study_logs_data', JSON.stringify(logs));
-        }
+        const newWeekCard = {
+          id: `c${colIndex}_${Date.now()}_${safetyCounter}`,
+          weekNum: nextWeekNum,
+          startDate: nextStartDate,
+          subjectName: currentTask.subjectName,
+          subjectColor: currentTask.subjectColor,
+          contentTitle: currentTask.contentTitle,
+          startClass: nextStartClass,
+          totalClasses: total,
+          dailyClasses: currentTask.dailyClasses,
+          activeDays: [...currentTask.activeDays], // keep same day configuration
+          remainingTask: currentTask.remainingTask,
+          completed: false
+        };
 
-        const { data: cloudSubs } = await supabaseClient
-          .from('study_subjects')
-          .select('name')
-          .eq('user_email', currentProfile.email);
-
-        const cloudSubNames = new Set((cloudSubs || []).map(s => s.name));
-        const localSubsToUpload = subjects.filter(s => !initialDefaultSubjects.includes(s) && !cloudSubNames.has(s));
-
-        if (localSubsToUpload.length > 0) {
-          const subPayload = localSubsToUpload.map(name => ({
-            user_email: currentProfile.email,
-            name: name
-          }));
-          await supabaseClient.from('study_subjects').insert(subPayload);
-        }
-
-        if (cloudSubs && cloudSubs.length > 0) {
-          cloudSubs.forEach(s => {
-            if (!subjects.includes(s.name)) subjects.push(s.name);
-          });
-          localStorage.setItem('study_subjects_list', JSON.stringify(subjects));
-        }
-
-        renderSubjectDropdown();
-        renderAll();
-        showToast("🟢 Cloud Synced Successfully!");
-      } catch (err) {
-        console.error("Sync error:", err);
-        showToast("⚠️ Cloud Sync Warning", false);
-      }
-    }
-
-    async function saveLogToCloud(newLog) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        const { error } = await supabaseClient.from('study_logs').upsert([{
-          id: newLog.id,
-          user_email: currentProfile.email,
-          subject: newLog.subject,
-          topic: newLog.topic,
-          duration: newLog.duration,
-          start_time: newLog.startTime,
-          end_time: newLog.endTime,
-          end_timestamp: newLog.endTimestamp,
-          date: newLog.date
-        }]);
-        if (error) throw error;
-        showToast("Session saved to Cloud ☁️");
-      } catch (err) {
-        console.error("Cloud log save error:", err);
-        showToast("Saved Locally", false);
-      }
-    }
-
-    async function saveSubjectToCloud(subjectName) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('study_subjects').insert([{
-          user_email: currentProfile.email,
-          name: subjectName
-        }]);
-      } catch (err) {
-        console.error("Cloud subject save error:", err);
-      }
-    }
-
-    async function deleteSubjectFromCloud(subjectName) {
-      if (!supabaseClient || !currentProfile) return;
-      try {
-        await supabaseClient.from('study_subjects').delete().eq('name', subjectName).eq('user_email', currentProfile.email);
-      } catch (err) {
-        console.error("Cloud subject delete error:", err);
-      }
-    }
-
-    // ==========================================
-    // 4. TIMER & SESSION HANDLERS
-    // ==========================================
-    function playBeep() {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(900, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    function triggerAlarm(topicName, durationMins) {
-      document.getElementById('alarmTopicText').innerText = `"${topicName}" session complete & permanently saved!`;
-      document.getElementById('alarmModal').classList.remove('hidden');
-
-      triggerSystemLockScreenNotification(topicName, durationMins);
-
-      if (navigator.vibrate) navigator.vibrate([600, 300, 600, 300, 600]);
-
-      playBeep();
-      alarmAudioInterval = setInterval(() => {
-        playBeep();
-        if (navigator.vibrate) navigator.vibrate([600, 300, 600]);
-      }, 1000);
-    }
-
-    function stopAlarm() {
-      if (alarmAudioInterval) {
-        clearInterval(alarmAudioInterval);
-        alarmAudioInterval = null;
-      }
-      if (navigator.vibrate) navigator.vibrate(0);
-      document.getElementById('alarmModal').classList.add('hidden');
-    }
-
-    function togglePauseResumeSession() {
-      if (!activeSession) return;
-
-      if (!activeSession.isPaused) {
-        const now = new Date().getTime();
-        const remaining = Math.max(0, activeSession.endTimestamp - now);
-        activeSession.isPaused = true;
-        activeSession.remainingMs = remaining;
-        localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-        
-        clearPendingBackendNotifications();
-        if (swRegistration && swRegistration.active) {
-          swRegistration.active.postMessage({ type: 'CLEAR_LIVE_TRACKER' });
-        }
-        
-        checkActiveSessionTimer();
-      } else {
-        const now = new Date().getTime();
-        activeSession.isPaused = false;
-        activeSession.endTimestamp = now + (activeSession.remainingMs || 0);
-        localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-        
-        const newEndTime = new Date(activeSession.endTimestamp);
-        scheduleBackendNotification(activeSession.topic, activeSession.duration, newEndTime.toISOString());
-        
-        if (swRegistration && swRegistration.active) {
-          swRegistration.active.postMessage({
-            type: 'START_LIVE_TRACKER',
-            subject: activeSession.subject,
-            topic: activeSession.topic,
-            duration: activeSession.duration,
-            endTimeStr: formatTime12Hour(newEndTime)
-          });
-        }
-        
-        checkActiveSessionTimer();
-      }
-    }
-
-    function showTargetAchievedModal() {
-      document.getElementById('achievedTargetText').innerText = formatTime(dailyTargetMins);
-      document.getElementById('targetAchievedModal').classList.remove('hidden');
-      localStorage.setItem('target_prompt_date', getTodayDateString());
-      targetPromptShownForToday = true;
-      lucide.createIcons();
-    }
-
-    function extendDailyTarget(additionalMinutes) {
-      dailyTargetMins += additionalMinutes;
-      localStorage.setItem('daily_target_mins', dailyTargetMins.toString());
-      closeTargetModal();
-      renderAll();
-    }
-
-    function closeTargetModal() {
-      document.getElementById('targetAchievedModal').classList.add('hidden');
-    }
-
-    function checkActiveSessionTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-
-      if (!activeSession) {
-        document.getElementById('activeTimerCard').classList.add('hidden');
-        document.getElementById('startBtn').disabled = false;
-        document.getElementById('startBtn').innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Start Study Timer Now`;
-        lucide.createIcons();
-        return;
+        list.push(newWeekCard);
+        currentTask = newWeekCard;
       }
 
-      document.getElementById('activeTimerCard').classList.remove('hidden');
-      
-      const subColor = getSubjectColor(activeSession.subject);
-      const subTag = document.getElementById('liveSubjectTag');
-      subTag.innerText = activeSession.subject;
-      subTag.style.color = subColor;
-
-      document.getElementById('activeSessionTopic').innerText = activeSession.topic;
-      document.getElementById('liveStartTimeTag').innerText = `Started at: ${formatTime12Hour(activeSession.startTime)}`;
-      
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('startBtn').innerHTML = `<i data-lucide="lock" class="w-4 h-4"></i> Session in Progress...`;
-
-      const pauseBtn = document.getElementById('pauseResumeBtn');
-      const pauseText = document.getElementById('pauseResumeText');
-      const statusTag = document.getElementById('sessionStatusTag');
-      const hourglass = document.getElementById('timerHourglassIcon');
-
-      if (activeSession.isPaused) {
-        statusTag.innerText = "SESSION PAUSED";
-        statusTag.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
-        pauseText.innerText = "Resume";
-        pauseBtn.className = "px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5";
-        hourglass.classList.remove('animate-spin');
-
-        const totalSec = Math.floor((activeSession.remainingMs || 0) / 1000);
-        const hours = Math.floor(totalSec / 3600);
-        const minutes = Math.floor((totalSec % 3600) / 60);
-        const seconds = totalSec % 60;
-        document.getElementById('countdownDisplay').innerText = 
-          `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        lucide.createIcons();
-        return;
-      }
-
-      statusTag.innerText = "LOCKED SESSION";
-      statusTag.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-      pauseText.innerText = "Pause";
-      pauseBtn.className = "px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5";
-      hourglass.classList.add('animate-spin');
-
-      function updateClock() {
-        const now = new Date().getTime();
-        const distance = activeSession.endTimestamp - now;
-
-        if (distance <= 0) {
-          clearInterval(timerInterval);
-          
-          const completedLog = {
-            id: Date.now().toString(),
-            subject: activeSession.subject,
-            topic: activeSession.topic,
-            duration: activeSession.duration,
-            startTime: formatTime12Hour(activeSession.startTime),
-            endTime: formatTime12Hour(new Date()),
-            endTimestamp: activeSession.endTimestamp,
-            date: activeSession.date,
-            createdAt: new Date().toISOString()
-          };
-
-          logs.unshift(completedLog);
-          localStorage.setItem('study_logs_data', JSON.stringify(logs));
-          saveLogToCloud(completedLog);
-          
-          const topicName = activeSession.topic;
-          const durationMins = activeSession.duration;
-          localStorage.removeItem('active_study_session');
-          activeSession = null;
-
-          document.getElementById('activeTimerCard').classList.add('hidden');
-          renderAll();
-          checkActiveSessionTimer();
-          triggerAlarm(topicName, durationMins);
-        } else {
-          const totalSeconds = Math.floor(distance / 1000);
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
-          const seconds = totalSeconds % 60;
-          
-          document.getElementById('countdownDisplay').innerText = 
-            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-      }
-
-      updateClock();
-      timerInterval = setInterval(updateClock, 1000);
-      lucide.createIcons();
+      saveState();
+      renderColumns();
+      renderAllWeeklySheets();
     }
 
-    function abandonActiveSession() {
-      if (confirm("Kya aap session beech me chhodna chahte hain?")) {
-        if (timerInterval) clearInterval(timerInterval);
-        
-        clearPendingBackendNotifications();
+    // Add just one week step
+    function addSingleNextWeek(colIndex, cardIndex) {
+      const currentTask = plannerData[colIndex][cardIndex];
+      currentTask.completed = true;
 
-        if (swRegistration && swRegistration.active) {
-          swRegistration.active.postMessage({ type: 'CLEAR_LIVE_TRACKER' });
-        }
+      const activeCount = (currentTask.activeDays || []).filter(Boolean).length;
+      const covered = (Number(currentTask.dailyClasses) || 1) * activeCount;
+      const nextStartClass = Number(currentTask.startClass) + covered;
 
-        localStorage.removeItem('active_study_session');
-        activeSession = null;
-        checkActiveSessionTimer();
-      }
-    }
-
-    document.getElementById('studyForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      if (activeSession) {
-        alert("Ek session pehle se chal raha hai!");
-        return;
-      }
-
-      requestNotificationPermission();
-
-      const subject = document.getElementById('subjectSelect').value;
-      const hours = parseInt(document.getElementById('hoursSelect').value, 10);
-      const minutes = parseInt(document.getElementById('minutesSelect').value, 10);
-      const durationMinutes = (hours * 60) + minutes;
-
-      if (durationMinutes <= 0) {
-        alert("Kripya kam se kam 5 minutes ka session select karein!");
-        return;
-      }
-
-      const topic = document.getElementById('topicInput').value.trim();
-      const startTimeObj = new Date();
-      const endTimeObj = new Date(startTimeObj.getTime() + durationMinutes * 60000);
-
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-
-      activeSession = {
-        subject,
-        topic,
-        duration: durationMinutes,
-        startTime: formatTime12Hour(startTimeObj),
-        endTime: formatTime12Hour(endTimeObj),
-        date: getTodayDateString(),
-        endTimestamp: endTimeObj.getTime(),
-        isPaused: false,
-        remainingMs: durationMinutes * 60000
+      const newCard = {
+        id: `c${colIndex}_${Date.now()}`,
+        weekNum: Number(currentTask.weekNum) + 1,
+        startDate: addDays(currentTask.startDate, 8),
+        subjectName: currentTask.subjectName,
+        subjectColor: currentTask.subjectColor,
+        contentTitle: currentTask.contentTitle,
+        startClass: nextStartClass,
+        totalClasses: currentTask.totalClasses,
+        dailyClasses: currentTask.dailyClasses,
+        activeDays: [...currentTask.activeDays],
+        remainingTask: currentTask.remainingTask,
+        completed: false
       };
 
-      localStorage.setItem('active_study_session', JSON.stringify(activeSession));
-
-      // 🔔 Lock Screen Par Live Silent Tracker Bhejna
-      if (swRegistration && swRegistration.active) {
-        swRegistration.active.postMessage({
-          type: 'START_LIVE_TRACKER',
-          subject: subject,
-          topic: topic,
-          duration: durationMinutes,
-          endTimeStr: formatTime12Hour(endTimeObj)
-        });
-      }
-
-      // Backend Database Scheduler Entry
-      scheduleBackendNotification(topic, durationMinutes, endTimeObj.toISOString());
-
-      document.getElementById('topicInput').value = '';
-      checkActiveSessionTimer();
-    });
-
-    function changeView(filter) {
-      currentFilter = filter;
-      ['tabToday', 'tabWeek', 'tabMonth'].forEach(tab => {
-        document.getElementById(tab).className = 'px-3 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      });
-      if (filter === 'today') document.getElementById('tabToday').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      if (filter === 'week') document.getElementById('tabWeek').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      if (filter === 'month') document.getElementById('tabMonth').className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-      renderLogsList();
+      plannerData[colIndex].push(newCard);
+      saveState();
+      renderColumns();
+      renderAllWeeklySheets();
     }
 
-    function getFilteredLogs(filter) {
-      const now = new Date();
-      const todayStr = getTodayDateString();
-      return logs.filter(log => {
-        const logDate = new Date(log.date);
-        if (filter === 'today') return log.date === todayStr;
-        if (filter === 'week') {
-          const diffDays = (now - logDate) / (1000 * 60 * 60 * 24);
-          return diffDays >= 0 && diffDays <= 7;
-        }
-        if (filter === 'month') return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-        return true;
-      });
-    }
+    function renderColumns() {
+      [1, 2, 3].forEach(colIndex => {
+        const container = document.getElementById(`col-cards-${colIndex}`);
+        const countBadge = document.getElementById(`col-${colIndex}-count`);
+        const cards = plannerData[colIndex] || [];
+        
+        countBadge.innerText = `${cards.length} Week${cards.length > 1 ? 's' : ''}`;
+        container.innerHTML = '';
 
-    function formatTime(minutes) {
-      return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-    }
+        cards.forEach((task, idx) => {
+          if (!task.activeDays || task.activeDays.length !== 8) {
+            task.activeDays = [true, true, true, true, false, false, false, false];
+          }
 
-    function updateComparisonData(todayMins) {
-      const yesterdayStr = getYesterdayDateString();
-      const now = new Date();
-      const currentTimestamp = now.getTime();
+          const activeDaysCount = task.activeDays.filter(Boolean).length;
+          const classesCoveredThisWeek = (task.dailyClasses || 0) * activeDaysCount;
+          const endClassThisWeek = Math.min(Number(task.totalClasses || 0), Number(task.startClass || 1) + classesCoveredThisWeek - 1);
+          const isFinished = Number(task.startClass) > Number(task.totalClasses);
+          const isLast = idx === cards.length - 1;
 
-      const yesterdayLogs = logs.filter(log => {
-        if (log.date !== yesterdayStr) return false;
-        if (log.endTimestamp) {
-          const yesterdayCorrespondingTime = currentTimestamp - (24 * 60 * 60 * 1000);
-          return log.endTimestamp <= yesterdayCorrespondingTime;
-        }
-        return true;
-      });
+          const card = document.createElement('div');
+          card.className = `task-card ${task.completed ? 'completed' : ''}`;
+          card.style.borderTopColor = task.subjectColor;
 
-      const yesterdayMinsTillNow = yesterdayLogs.reduce((acc, curr) => acc + curr.duration, 0);
+          let daysButtonsHtml = '';
+          DAYS_CYCLE.forEach((day, dIdx) => {
+            const isDayActive = task.activeDays[dIdx] === true;
+            const activeStyle = isDayActive ? `background:${task.subjectColor}; color:#fff; border-color:${task.subjectColor}; font-weight:800;` : '';
+            daysButtonsHtml += `
+              <button 
+                type="button" 
+                class="day-toggle-btn ${isDayActive ? 'active' : ''}" 
+                style="${activeStyle}" 
+                onclick="toggleSingleDay(${colIndex}, ${idx}, ${dIdx})">
+                ${day.code}
+              </button>
+            `;
+          });
 
-      document.getElementById('yesterdayTimeTillNow').innerText = formatTime(yesterdayMinsTillNow);
-      
-      const todayElement = document.getElementById('todayTimeTillNow');
-      todayElement.innerText = formatTime(todayMins);
-
-      const diff = todayMins - yesterdayMinsTillNow;
-      const badge = document.getElementById('comparisonBadge');
-      const text = document.getElementById('comparisonDiffText');
-
-      if (diff > 0) {
-        todayElement.className = "text-base font-bold text-emerald-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        badge.innerText = `+${formatTime(diff)} Zyada 🚀`;
-        text.innerHTML = `Shaandaar! Aaj aapne kal se is time tak <b class="text-emerald-400 font-bold">${formatTime(diff)} zyada padhai</b> ki hai.`;
-      } else if (diff < 0) {
-        todayElement.className = "text-base font-bold text-rose-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/30";
-        badge.innerText = `-${formatTime(Math.abs(diff))} Kam ⚠️`;
-        text.innerHTML = `Savdhan! Aaj aap kal se is samay tak <b class="text-rose-400 font-bold">${formatTime(Math.abs(diff))} peeche</b> hain. Raat tak target pura karein!`;
-      } else {
-        todayElement.className = "text-base font-bold text-indigo-400 mt-0.5";
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-slate-700 text-slate-300";
-        badge.innerText = "Barabar (Equal)";
-        text.innerHTML = `Aaj aur kal is time tak padhai bilkul barabar (<b class="text-indigo-400">${formatTime(todayMins)}</b>) rahi hai.`;
-      }
-    }
-
-    function updateKPICards() {
-      const monthLogs = getFilteredLogs('month');
-      const monthMins = monthLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('monthlyTotalHours').innerText = formatTime(monthMins);
-
-      const weekLogs = getFilteredLogs('week');
-      const weekMins = weekLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('weeklyTotalHours').innerText = formatTime(weekMins);
-
-      const todayLogs = getFilteredLogs('today');
-      const todayMins = todayLogs.reduce((acc, curr) => acc + curr.duration, 0);
-      document.getElementById('todayTotalHours').innerText = formatTime(todayMins);
-      document.getElementById('todayGoalTag').innerText = `Daily Goal: ${formatTime(dailyTargetMins)}`;
-      document.getElementById('dynamicTargetLabel').innerText = `Daily Target (${formatTime(dailyTargetMins)})`;
-
-      document.getElementById('todayTopicCount').innerText = todayLogs.length;
-
-      updateComparisonData(todayMins);
-
-      const percent = Math.min(Math.round((todayMins / dailyTargetMins) * 100), 100);
-      document.getElementById('goalPercentText').innerText = `${percent}%`;
-      document.getElementById('goalProgressBar').style.width = `${percent}%`;
-
-      if (todayMins >= dailyTargetMins && !targetPromptShownForToday) {
-        showTargetAchievedModal();
-      }
-
-      const msg = document.getElementById('motivationalText');
-      if (todayMins >= dailyTargetMins) {
-        msg.innerText = `Shaandaar! Aaj ka ${formatTime(dailyTargetMins)} ka target pura ho gaya! Extra time add karke new record banayein.`;
-        msg.className = "text-xs font-semibold text-emerald-400 border-l-2 border-emerald-400 pl-3 py-0.5";
-      } else if (todayMins > 0) {
-        msg.innerText = `Shaam tak ${formatTime(todayMins)} real padhai hui hai. Target se ${formatTime(dailyTargetMins - todayMins)} bache hain.`;
-        msg.className = "text-xs italic text-slate-300 border-l-2 border-indigo-400 pl-3 py-0.5";
-      } else {
-        msg.innerText = "Live study session start karein!";
-        msg.className = "text-xs italic text-slate-400 border-l-2 border-slate-600 pl-3 py-0.5";
-      }
-    }
-
-    function renderLogsList() {
-      const container = document.getElementById('logsContainer');
-      const filtered = getFilteredLogs(currentFilter);
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-8 text-slate-500 text-sm">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            Koi completed session nahi mila.
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      container.innerHTML = filtered.map(item => {
-        const subColor = getSubjectColor(item.subject);
-        return `
-          <div class="bg-slate-900/80 border border-slate-700/60 p-3.5 rounded-xl space-y-1.5 hover:border-slate-600 transition">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold transition" style="background-color: ${subColor}20; color: ${subColor}; border: 1px solid ${subColor}40;">
-                ${item.subject}
+          card.innerHTML = `
+            <div class="card-top-row">
+              <span class="week-chip" style="background:${task.subjectColor}15; color:${task.subjectColor};">
+                WEEK ${task.weekNum}
               </span>
-              <span class="text-sm font-semibold text-slate-100">${item.topic}</span>
+              <span class="status-pill">${task.completed ? 'COMPLETED ✓' : 'INCOMPLETE'}</span>
             </div>
 
-            <div class="text-xs text-slate-300 font-mono flex items-center gap-1.5">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-400"></i>
-              <span>${formatTime(item.duration)} (${formatTime12Hour(item.startTime)} - ${formatTime12Hour(item.endTime)})</span>
+            <div class="form-row">
+              <div>
+                <label>Week Start Date (DD/MM/YYYY)</label>
+                <input type="date" value="${task.startDate}" onchange="updateField(${colIndex}, ${idx}, 'startDate', this.value)" ${task.completed ? 'disabled' : ''}>
+              </div>
+              <div>
+                <label>Subject Colour</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" value="${task.subjectColor}" onchange="updateField(${colIndex}, ${idx}, 'subjectColor', this.value)">
+                  <div class="subject-preview" style="color: ${task.subjectColor}; border: 1px solid ${task.subjectColor}40;">${task.subjectName || 'Sample'}</div>
+                </div>
+              </div>
             </div>
 
-            <div class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-              <i data-lucide="calendar" class="w-3.5 h-3.5 text-emerald-400"></i>
-              <span>${item.date}</span>
+            <div class="form-row">
+              <div>
+                <label>Subject Name</label>
+                <input type="text" placeholder="Subject Name" value="${task.subjectName}" oninput="updateField(${colIndex}, ${idx}, 'subjectName', this.value)">
+              </div>
+              <div>
+                <label>Content Title</label>
+                <input type="text" placeholder="Content Title" value="${task.contentTitle}" oninput="updateField(${colIndex}, ${idx}, 'contentTitle', this.value)">
+              </div>
             </div>
+
+            <div class="form-row">
+              <div>
+                <label>Start Class / Total No. (e.g. 100)</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <input type="number" min="1" style="width:48%;" placeholder="Start" value="${task.startClass}" oninput="updateField(${colIndex}, ${idx}, 'startClass', Number(this.value))">
+                  <span style="color:#94a3b8; font-weight:700;">/</span>
+                  <input type="number" min="1" style="width:48%;" placeholder="Total (100)" value="${task.totalClasses}" oninput="updateField(${colIndex}, ${idx}, 'totalClasses', Number(this.value))">
+                </div>
+              </div>
+              <div>
+                <label>Daily Kitni Class (Per Day)</label>
+                <input type="number" min="1" max="10" value="${task.dailyClasses}" oninput="updateField(${colIndex}, ${idx}, 'dailyClasses', Number(this.value))">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="margin-bottom:0;">Kitne Din Padhna Hai? [S M T W T F S S]:</label>
+                <span style="font-size:11px; font-weight:700; color:${task.subjectColor};">${activeDaysCount} Din Active</span>
+              </div>
+              <div class="days-badge-container">
+                ${daysButtonsHtml}
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label>Bache Hue Dino Ka Task</label>
+              <input type="text" placeholder="e.g. REV, CHEMISTRY 2, UP GK" value="${task.remainingTask}" oninput="updateField(${colIndex}, ${idx}, 'remainingTask', this.value)">
+            </div>
+
+            <div class="calc-summary">
+              <span>Status: <b>${isFinished ? '<span style="color:#E7E7E7; font-weight:800; background:#334155; padding:1px 6px; border-radius:3px;">COMPLETE</span>' : `Class ${task.startClass} to ${endClassThisWeek > 0 ? endClassThisWeek : task.startClass}`}</b></span>
+              <span>Bache Din: <b>${8 - activeDaysCount} Din</b></span>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="card-actions">
+              ${isLast && !isFinished ? `
+                <button class="btn-auto-all" onclick="generateAllWeeksUntilComplete(${colIndex})">
+                  ⚡ Auto-Generate All Weeks (Till ${task.totalClasses} Classes)
+                </button>
+                <button class="btn-step-action" onclick="addSingleNextWeek(${colIndex}, ${idx})">
+                  + Add Next Single Week
+                </button>
+              ` : `
+                <button class="btn btn-outline" style="width:100%; font-size:12.5px; padding:6px;" onclick="reopenTask(${colIndex}, ${idx})">
+                  ↩ Edit Week ${task.weekNum}
+                </button>
+              `}
+              ${idx > 0 ? `<button class="btn-delete-card" onclick="deleteCard(${colIndex}, ${idx})">✕ Remove this week step</button>` : ''}
+            </div>
+          `;
+
+          container.appendChild(card);
+        });
+      });
+
+      renderAllWeeklySheets();
+    }
+
+    function updateField(colIndex, cardIndex, field, value) {
+      plannerData[colIndex][cardIndex][field] = value;
+      saveState();
+      renderAllWeeklySheets();
+    }
+
+    function reopenTask(colIndex, cardIndex) {
+      plannerData[colIndex][cardIndex].completed = false;
+      saveState();
+      renderColumns();
+      renderAllWeeklySheets();
+    }
+
+    function deleteCard(colIndex, cardIndex) {
+      if (confirm("Kya aap is week step ko delete karna chahte hain?")) {
+        plannerData[colIndex].splice(cardIndex, 1);
+        saveState();
+        renderColumns();
+        renderAllWeeklySheets();
+      }
+    }
+
+    function updateObservation(weekNum, text) {
+      observationsData[weekNum] = text;
+      saveState();
+    }
+
+    // Render Full Weekly Output Table
+    function renderAllWeeklySheets() {
+      const container = document.getElementById('allWeeklySheetsContainer');
+      container.innerHTML = '';
+
+      let maxWeek = 1;
+      [1, 2, 3].forEach(c => {
+        (plannerData[c] || []).forEach(t => {
+          if (t.weekNum > maxWeek) maxWeek = t.weekNum;
+        });
+      });
+
+      document.getElementById('totalWeeksCountBadge').innerText = `Total Generated Weeks: ${maxWeek}`;
+
+      for (let w = 1; w <= maxWeek; w++) {
+        const colTasks = [1, 2, 3].map(colIdx => {
+          const list = plannerData[colIdx] || [];
+          return list.find(t => t.weekNum === w) || list[list.length - 1];
+        });
+
+        const isAllColsCompleted = colTasks.every(t => t && t.completed);
+        const baseDateStr = colTasks[0]?.startDate || '2026-09-17';
+
+        const weekCard = document.createElement('div');
+        weekCard.className = 'weekly-sheet-card';
+
+        const statusBarHtml = `
+          <div class="sheet-status-bar">
+            <span class="week-tag">WEEK ${w}</span>
+            <span class="status-tag ${isAllColsCompleted ? 'status-complete' : 'status-incomplete'}">
+              ${isAllColsCompleted ? 'COMPLETE' : 'INCOMPLETE'}
+            </span>
           </div>
         `;
-      }).join('');
 
-      lucide.createIcons();
-    }
+        let theadHtml = `
+          <thead>
+            <tr>
+              <th style="width: 25%;">Date</th>
+              <th style="width: 25%; color: ${colTasks[0]?.subjectColor || '#1d4ed8'}; border-bottom: 3px solid ${colTasks[0]?.subjectColor || '#1d4ed8'};">
+                ${colTasks[0]?.subjectName || 'C A / POLITY'}
+              </th>
+              <th style="width: 25%; color: ${colTasks[1]?.subjectColor || '#16a34a'}; border-bottom: 3px solid ${colTasks[1]?.subjectColor || '#16a34a'};">
+                ${colTasks[1]?.subjectName || 'SCIENCE'}
+              </th>
+              <th style="width: 25%; color: ${colTasks[2]?.subjectColor || '#ea580c'}; border-bottom: 3px solid ${colTasks[2]?.subjectColor || '#ea580c'};">
+                ${colTasks[2]?.subjectName || 'GS'}
+              </th>
+            </tr>
+          </thead>
+        `;
 
-    function setChartTimeframe(timeframe) {
-      currentChartTimeframe = timeframe;
-      ['chartTabToday', 'chartTabWeek', 'chartTabMonth'].forEach(tab => {
-        document.getElementById(tab).className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium transition';
-      });
-      if (timeframe === 'today') document.getElementById('chartTabToday').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
-      if (timeframe === 'week') document.getElementById('chartTabWeek').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
-      if (timeframe === 'month') document.getElementById('chartTabMonth').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium shadow-sm transition';
+        let tbodyHtml = '<tbody>';
+        let runningClassCounters = colTasks.map(t => Number(t?.startClass) || 1);
 
-      updateChart();
-    }
+        DAYS_CYCLE.forEach((dayObj, dayOffset) => {
+          const d = new Date(baseDateStr);
+          d.setDate(d.getDate() + dayOffset);
+          const dayDisplay = `${d.getDate()}-${d.toLocaleString('en-US', { month: 'short' })} (${dayObj.name})`;
 
-    function toggleChartType(type) {
-      currentChartType = type;
-      if (type === 'doughnut') {
-        document.getElementById('btnDoughnut').className = 'p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600';
-        document.getElementById('btnBar').className = 'p-1 rounded bg-slate-900 text-slate-400 hover:text-slate-800';
-      } else {
-        document.getElementById('btnBar').className = 'p-1 rounded bg-slate-700 text-indigo-300 hover:bg-slate-600';
-        document.getElementById('btnDoughnut').className = 'p-1 rounded bg-slate-900 text-slate-400 hover:text-slate-800';
-      }
-      updateChart();
-    }
+          tbodyHtml += `<tr>`;
+          tbodyHtml += `
+            <td class="date-col">
+              <span class="day-tag-circle">${dayObj.code}</span>${dayDisplay}
+            </td>
+          `;
 
-    function updateChart() {
-      const filteredForChart = getFilteredLogs(currentChartTimeframe);
-      const subjectMap = {};
-      let totalMins = 0;
+          colTasks.forEach((task, colIdx) => {
+            if (!task) {
+              tbodyHtml += `<td>-</td>`;
+            } else {
+              const isDayActive = task.activeDays && task.activeDays[dayOffset] === true;
+              const daily = Number(task.dailyClasses) || 1;
+              const total = Number(task.totalClasses) || 0;
+              const currentStart = runningClassCounters[colIdx];
 
-      filteredForChart.forEach(log => {
-        subjectMap[log.subject] = (subjectMap[log.subject] || 0) + log.duration;
-        totalMins += log.duration;
-      });
+              if (isDayActive) {
+                if (currentStart > total) {
+                  tbodyHtml += `<td><span class="cell-completed-tag">COMPLETE</span></td>`;
+                } else {
+                  let currentEnd = currentStart + daily - 1;
+                  let classLabel = '';
 
-      document.getElementById('chartTotalTime').innerText = formatTime(totalMins);
+                  if (currentEnd > total) {
+                    currentEnd = total;
+                  }
 
-      const labels = Object.keys(subjectMap);
-      const data = Object.values(subjectMap);
-      const noDataMsg = document.getElementById('noChartDataMsg');
+                  classLabel = (daily === 1 || currentStart === currentEnd) 
+                    ? `${currentStart}` 
+                    : `${currentStart}-${currentEnd}`;
 
-      if (chartInstance) chartInstance.destroy();
-
-      if (labels.length === 0) {
-        noDataMsg.classList.remove('hidden');
-        lucide.createIcons();
-        return;
-      } else {
-        noDataMsg.classList.add('hidden');
-      }
-
-      const ctx = document.getElementById('subjectChart').getContext('2d');
-      const chartColors = labels.map(sub => getSubjectColor(sub));
-
-      chartInstance = new Chart(ctx, {
-        type: currentChartType,
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: chartColors,
-            borderWidth: currentChartType === 'doughnut' ? 2 : 0,
-            borderColor: '#1e293b',
-            borderRadius: currentChartType === 'bar' ? 6 : 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          onClick: (evt, elements) => {
-            if (elements && elements.length > 0) {
-              const elementIndex = elements[0].index;
-              const clickedSubject = labels[elementIndex];
-              openSubjectDrilldownModal(clickedSubject);
-            }
-          },
-          plugins: {
-            legend: {
-              display: currentChartType === 'doughnut',
-              position: 'bottom',
-              labels: { color: '#94a3b8', boxWidth: 10, font: { size: 10 } }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return ` ${context.label}: ${formatTime(context.raw)} (Click for Deep Analytics)`;
+                  tbodyHtml += `<td style="color: ${task.subjectColor}; font-weight: 800;">${task.contentTitle} ${classLabel}</td>`;
+                  runningClassCounters[colIdx] += daily;
+                }
+              } else {
+                if (currentStart > total) {
+                  tbodyHtml += `<td><span class="cell-completed-tag">COMPLETE</span></td>`;
+                } else {
+                  tbodyHtml += `<td style="color: #dc2626; font-weight: 800;">${task.remainingTask || 'REV'}</td>`;
                 }
               }
             }
-          },
-          scales: currentChartType === 'bar' ? {
-            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-            y: {
-              ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) },
-              grid: { color: '#334155' }
-            }
-          } : {}
-        }
-      });
-    }
-
-    // ==========================================
-    // 5. MONDAY-SUNDAY WEEKLY PDF EXPORT ENGINE
-    // ==========================================
-    function getMonday(d) {
-      const date = new Date(d);
-      const day = date.getDay();
-      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-      return new Date(date.setDate(diff));
-    }
-
-    function groupLogsByMondaySundayWeeks(allLogs) {
-      const sorted = [...allLogs].sort((a, b) => new Date(a.date) - new Date(b.date));
-      const weeksMap = {};
-
-      sorted.forEach(log => {
-        const logDate = new Date(log.date);
-        const mon = getMonday(logDate);
-        const sun = new Date(mon);
-        sun.setDate(mon.getDate() + 6);
-
-        const weekKey = `${getFormattedDate(mon)}_${getFormattedDate(sun)}`;
-        if (!weeksMap[weekKey]) {
-          weeksMap[weekKey] = {
-            startDate: getFormattedDate(mon),
-            endDate: getFormattedDate(sun),
-            logs: []
-          };
-        }
-        weeksMap[weekKey].logs.push(log);
-      });
-
-      return Object.values(weeksMap);
-    }
-
-    function exportColorfulPDF(type) {
-      try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        const baseLogs = (type === 'today') ? getFilteredLogs('today') : logs;
-        if (!baseLogs || baseLogs.length === 0) {
-          alert(`Export karne ke liye koi study log available nahi hai!`);
-          return;
-        }
-
-        const userName = currentProfile ? currentProfile.name : "Satyam Yadav";
-        const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        const primaryColor = [79, 70, 229]; // Indigo
-        const darkBg = [15, 23, 42];        // Slate 900
-
-        // Header Background Banner
-        doc.setFillColor(darkBg[0], darkBg[1], darkBg[2]);
-        doc.rect(0, 0, 210, 42, 'F');
-
-        // Top Accent Line
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(0, 42, 210, 3, 'F');
-
-        // Main Header Titles
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.text("StudyTracker Pro Report", 14, 18);
-
-        doc.setFontSize(12.5);
-        doc.setTextColor(148, 163, 184);
-        doc.text(`Student: ${userName} | Date: ${dateStr}`, 14, 27);
-
-        doc.setFontSize(12.5);
-        doc.text("Admin: Satyam Bhaiya", 14, 35);
-        doc.setTextColor(59, 130, 246);
-        doc.text("https://telegram.me/stymmmmmmm", 75, 35);
-
-        let startY = 54;
-
-        if (type === 'today') {
-          // ================= SINGLE DAY EXPORT =================
-          const totalMins = baseLogs.reduce((a, b) => a + b.duration, 0);
-
-          doc.setFontSize(14);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(79, 70, 229);
-          doc.text("DAILY PERFORMANCE REPORT", 14, startY);
-          startY += 8;
-
-          doc.setFillColor(248, 250, 252);
-          doc.roundedRect(14, startY, 182, 18, 3, 3, 'F');
-          doc.setDrawColor(226, 232, 240);
-          doc.roundedRect(14, startY, 182, 18, 3, 3, 'S');
-
-          doc.setFontSize(12.5);
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(100, 116, 139);
-          doc.text(`Total Time: ${formatTime(totalMins)}`, 20, startY + 12);
-          doc.text(`Sessions: ${baseLogs.length}`, 120, startY + 12);
-          startY += 24;
-
-          startY = renderLogsTable(doc, baseLogs, startY);
-          renderWeekConclusion(doc, baseLogs, "TODAY");
-
-        } else {
-          // ================= MULTI-WEEK (MON-SUN) EXPORT =================
-          const weeklyGroups = groupLogsByMondaySundayWeeks(baseLogs);
-
-          weeklyGroups.forEach((weekObj, wIndex) => {
-            const weekNumber = wIndex + 1;
-            const weekTotalMins = weekObj.logs.reduce((a, b) => a + b.duration, 0);
-
-            if (wIndex > 0) {
-              doc.addPage();
-              startY = 20;
-            }
-
-            // WEEK BANNER
-            doc.setFillColor(79, 70, 229);
-            doc.roundedRect(14, startY, 182, 12, 2, 2, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12.5);
-            doc.text(`WEEK ${weekNumber} (${weekObj.startDate} to ${weekObj.endDate})`, 18, startY + 8);
-            doc.text(`Total: ${formatTime(weekTotalMins)}`, 145, startY + 8);
-
-            startY += 17;
-
-            // 1. Detailed Logs Table for this week
-            renderLogsTable(doc, weekObj.logs, startY);
-
-            // 2. Conclusion for this week on a fresh new page
-            renderWeekConclusion(doc, weekObj.logs, `WEEK ${weekNumber} (${weekObj.startDate} to ${weekObj.endDate})`);
           });
-        }
 
-        // Page Numbering Footer
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFontSize(10);
-          doc.setTextColor(148, 163, 184);
-          doc.text(`StudyTracker Pro - Page ${i} of ${pageCount}`, 14, 290);
-          doc.text("Keep pushing your limits! 🚀", 145, 290);
-        }
+          tbodyHtml += `</tr>`;
+        });
+        tbodyHtml += '</tbody>';
 
-        const fileName = `StudyReport_${type.toUpperCase()}_${getTodayDateString()}.pdf`;
-        doc.save(fileName);
-        showToast("📥 Multi-Week PDF Downloaded Successfully!");
-
-      } catch (err) {
-        console.error("PDF Export Error:", err);
-        alert("PDF export me error aayi hai. Console check karein.");
-      }
-    }
-
-    function renderLogsTable(doc, logsList, startY) {
-      doc.setFillColor(15, 23, 42);
-      doc.rect(14, startY, 182, 8, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("Subject", 18, startY + 5.5);
-      doc.text("Topic / Chapter Goal", 65, startY + 5.5);
-      doc.text("Duration", 140, startY + 5.5);
-      doc.text("Date", 172, startY + 5.5);
-
-      startY += 8;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(12.5);
-
-      logsList.forEach((log, index) => {
-        if (startY > 265) {
-          doc.addPage();
-          startY = 20;
-        }
-
-        if (index % 2 === 0) {
-          doc.setFillColor(241, 245, 249);
-          doc.rect(14, startY, 182, 9.5, 'F');
-        }
-
-        doc.setTextColor(15, 23, 42);
-        doc.setFont("helvetica", "bold");
-        doc.text(doc.splitTextToSize(log.subject || "General", 44), 18, startY + 6.5);
-
-        doc.setFont("helvetica", "normal");
-        doc.text(doc.splitTextToSize(log.topic || "--", 70), 65, startY + 6.5);
-
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(79, 70, 229);
-        doc.text(formatTime(log.duration), 140, startY + 6.5);
-
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 116, 139);
-        doc.text(log.date || "", 172, startY + 6.5);
-
-        startY += 9.5;
-      });
-
-      return startY;
-    }
-
-    function renderWeekConclusion(doc, logsList, weekLabel) {
-      // Direct New Page for Conclusion Section
-      doc.addPage();
-      let startY = 24;
-
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(79, 70, 229);
-      doc.text(`${weekLabel} - CONCLUSION & SUBJECT BREAKDOWN`, 14, startY);
-      startY += 8;
-
-      const subjectSummary = {};
-      logsList.forEach(log => {
-        const sub = log.subject || "General";
-        if (!subjectSummary[sub]) {
-          subjectSummary[sub] = {
-            totalMins: 0,
-            count: 0,
-            topics: []
-          };
-        }
-        subjectSummary[sub].totalMins += log.duration;
-        subjectSummary[sub].count += 1;
-        if (log.topic && !subjectSummary[sub].topics.includes(log.topic)) {
-          subjectSummary[sub].topics.push(log.topic);
-        }
-      });
-
-      // Header Bar for Conclusion Table
-      doc.setFillColor(15, 23, 42);
-      doc.rect(14, startY, 182, 9, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("Subject Name", 18, startY + 6);
-      doc.text("Total Time & Frequency", 70, startY + 6);
-      doc.text("Covered Chapters / Topics", 125, startY + 6);
-
-      startY += 9;
-
-      Object.keys(subjectSummary).forEach((subName, sIdx) => {
-        const item = subjectSummary[subName];
-        const safeTopics = item.topics.map(t => `- ${t}`).join("\n");
-        const splitTopics = doc.splitTextToSize(safeTopics, 65);
-        const rowHeight = Math.max(14, splitTopics.length * 5 + 6);
-
-        if (startY + rowHeight > 270) {
-          doc.addPage();
-          startY = 20;
-        }
-
-        if (sIdx % 2 === 0) {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(14, startY, 182, rowHeight, 'F');
-        }
-
-        doc.setDrawColor(226, 232, 240);
-        doc.rect(14, startY, 182, rowHeight, 'S');
-
-        doc.setTextColor(15, 23, 42);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12.5);
-        doc.text(subName, 18, startY + 7);
-
-        doc.setTextColor(79, 70, 229);
-        doc.text(`${formatTime(item.totalMins)}`, 70, startY + 7);
-        doc.setTextColor(100, 116, 139);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.text(`(${item.count} baar padha gaya)`, 70, startY + 13);
-
-        doc.setTextColor(51, 65, 85);
-        doc.setFontSize(12.5);
-        doc.text(splitTopics, 125, startY + 7);
-
-        startY += rowHeight;
-      });
-
-      return startY;
-    }
-
-    function openSubjectDrilldownModal(subjectName) {
-      selectedDrilldownSubject = subjectName;
-      document.getElementById('modalSubjectTitle').innerText = subjectName;
-
-      const subColor = getSubjectColor(subjectName);
-      const iconBadge = document.getElementById('modalSubjectIconBadge');
-      iconBadge.style.backgroundColor = `${subColor}20`;
-      iconBadge.style.borderColor = `${subColor}40`;
-      iconBadge.style.color = subColor;
-
-      const subjectLogs = logs.filter(l => l.subject === subjectName);
-      const now = new Date();
-
-      const weeklyMins = subjectLogs.filter(l => {
-        const diffDays = (now - new Date(l.date)) / (1000 * 60 * 60 * 24);
-        return diffDays >= 0 && diffDays <= 7;
-      }).reduce((acc, curr) => acc + curr.duration, 0);
-
-      const monthlyMins = subjectLogs.filter(l => {
-        const d = new Date(l.date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).reduce((acc, curr) => acc + curr.duration, 0);
-
-      document.getElementById('modalSubjectWeeklyHours').innerText = formatTime(weeklyMins);
-      document.getElementById('modalSubjectMonthlyHours').innerText = formatTime(monthlyMins);
-
-      const topicList = document.getElementById('modalTopicList');
-      if (subjectLogs.length === 0) {
-        topicList.innerHTML = `<p class="text-xs text-slate-500">Koi entry nahi mili.</p>`;
-      } else {
-        topicList.innerHTML = subjectLogs.map(l => `
-          <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl space-y-1 text-xs">
-            <p class="font-semibold text-slate-200">${l.topic}</p>
-            <div class="text-[11px] text-slate-300 font-mono">${formatTime(l.duration)} (${formatTime12Hour(l.startTime)} - ${formatTime12Hour(l.endTime)})</div>
-            <div class="text-[10px] text-slate-400 font-mono">${l.date}</div>
+        const currentObservationText = observationsData[w] || '';
+        const observationsHtml = `
+          <div class="sheet-observations-section">
+            <div class="sheet-observations-title">Observations / Backlog Tracker:</div>
+            <div class="sheet-observations-box" contenteditable="true" 
+                 placeholder="Yahan Week ${w} ke notes ya backlog likhein..."
+                 onblur="updateObservation(${w}, this.innerText)">${currentObservationText}</div>
           </div>
-        `).join('');
-      }
+        `;
 
-      currentDrilldownView = 'week';
-      updateDrilldownChartUI();
-      renderDrilldownChart();
+        weekCard.innerHTML = `
+          ${statusBarHtml}
+          <div style="overflow-x: auto;">
+            <table class="routine-table">
+              ${theadHtml}
+              ${tbodyHtml}
+            </table>
+          </div>
+          ${observationsHtml}
+        `;
 
-      document.getElementById('subjectDrilldownModal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeSubjectModal() {
-      document.getElementById('subjectDrilldownModal').classList.add('hidden');
-      if (drilldownChartInstance) {
-        drilldownChartInstance.destroy();
-        drilldownChartInstance = null;
+        container.appendChild(weekCard);
       }
     }
 
-    function switchDrilldownChart(view) {
-      currentDrilldownView = view;
-      updateDrilldownChartUI();
-      renderDrilldownChart();
-    }
-
-    function updateDrilldownChartUI() {
-      if (currentDrilldownView === 'week') {
-        document.getElementById('drillWeekBtn').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-        document.getElementById('drillMonthBtn').className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      } else {
-        document.getElementById('drillMonthBtn').className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium';
-        document.getElementById('drillWeekBtn').className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium';
-      }
-    }
-
-    function renderDrilldownChart() {
-      if (drilldownChartInstance) drilldownChartInstance.destroy();
-
-      const ctx = document.getElementById('drilldownChartCanvas').getContext('2d');
-      const subjectLogs = logs.filter(l => l.subject === selectedDrilldownSubject);
-      const subColor = getSubjectColor(selectedDrilldownSubject);
-
-      let labels = [];
-      let data = [];
-
-      if (currentDrilldownView === 'week') {
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dateStr = getFormattedDate(d);
-          const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
-          labels.push(dayName);
-
-          const dayMins = subjectLogs.filter(l => l.date === dateStr).reduce((acc, curr) => acc + curr.duration, 0);
-          data.push(dayMins);
-        }
-
-        drilldownChartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Minutes Studied',
-              data: data,
-              backgroundColor: subColor,
-              borderRadius: 6
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: { label: c => ` Time: ${formatTime(c.raw)}` }
-              }
-            },
-            scales: {
-              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-              y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) }, grid: { color: '#334155' } }
-            }
-          }
-        });
-
-      } else {
-        labels = ['Week 1 (1-7)', 'Week 2 (8-14)', 'Week 3 (15-21)', 'Week 4 (22-31)'];
-        data = [0, 0, 0, 0];
-        const now = new Date();
-
-        subjectLogs.forEach(l => {
-          const d = new Date(l.date);
-          if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-            const dateNum = d.getDate();
-            if (dateNum <= 7) data[0] += l.duration;
-            else if (dateNum <= 14) data[1] += l.duration;
-            else if (dateNum <= 21) data[2] += l.duration;
-            else data[3] += l.duration;
-          }
-        });
-
-        drilldownChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Monthly Minutes',
-              data: data,
-              borderColor: subColor,
-              backgroundColor: `${subColor}25`,
-              fill: true,
-              tension: 0.3,
-              pointBackgroundColor: subColor,
-              pointRadius: 4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: { label: c => ` Time: ${formatTime(c.raw)}` }
-              }
-            },
-            scales: {
-              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-              y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => formatTime(v) }, grid: { color: '#334155' } }
-            }
-          }
-        });
-      }
-    }
-
-    function renderAll() {
-      updateKPICards();
-      renderLogsList();
-      updateChart();
-      lucide.createIcons();
-    }
-
-    // Boot Sequence
-    renderSubjectDropdown();
-    renderAll();
-    checkActiveSessionTimer();
-    updateUserUI();
-    if (currentProfile) {
-      syncDataWithCloud();
-      startSessionWatcher();
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      renderColumns();
+      renderAllWeeklySheets();
+    });
   </script>
 </body>
 </html>
